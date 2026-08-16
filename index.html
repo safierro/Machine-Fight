@@ -366,6 +366,13 @@
             return { x: moveX, z: moveZ };
         }
 
+        function getRandomSpawn() {
+            // Sinh ngẫu nhiên trên 9x9 ô (Tương đương từ -4 đến 4 nhân với kích thước ô)
+            const rx = (Math.floor(Math.random() * GRID_SIZE) - Math.floor(GRID_SIZE/2)) * TILE_SIZE;
+            const rz = (Math.floor(Math.random() * GRID_SIZE) - Math.floor(GRID_SIZE/2)) * TILE_SIZE;
+            return { x: rx, z: rz };
+        }
+
         // Sử dụng mô hình khối có màu sắc ngẫu nhiên để load nhanh cho 8 người
         function createPlayerMesh(colorHex) {
             const group = new THREE.Group();
@@ -437,6 +444,13 @@
                 this.isAlive = false;
                 this.mesh.scale.y = 0.1;
                 this.mesh.position.y = -0.5;
+            }
+
+            revive(x, z) {
+                this.isAlive = true;
+                this.mesh.scale.y = 1;
+                this.mesh.position.set(x, 0, z);
+                this.targetPos.set(x, 0, z);
             }
         }
 
@@ -511,12 +525,12 @@
             gameStateRef = doc(db, 'artifacts', appId, 'public', 'data', `gameState_${currentRoomId}`, 'state');
             chatRef = collection(db, 'artifacts', appId, 'public', 'data', `chat_${currentRoomId}`);
 
-            // Spawn Local Player
-            localPlayer = new PlayerEntity(0, 0, localPlayerColor, true);
+            const spawn = getRandomSpawn();
+            localPlayer = new PlayerEntity(spawn.x, spawn.z, localPlayerColor, true);
 
             // Ghi danh lên Firestore
             await setDoc(doc(playersRef, userId), {
-                x: 0, z: 0, rot: 0, isAlive: true, color: localPlayerColor, joinedAt: Date.now(),
+                x: spawn.x, z: spawn.z, rot: 0, isAlive: true, color: localPlayerColor, joinedAt: Date.now(),
                 score: 0, kills: 0, deaths: 0            });
 
             // Gửi tin nhắn hệ thống
@@ -637,6 +651,8 @@
                         
                         if (!data.isAlive && remotePlayers[pid].isAlive) {
                             remotePlayers[pid].die();
+                        } else if (data.isAlive && !remotePlayers[pid].isAlive) {
+                            remotePlayers[pid].revive(data.x, data.z);
                         }
                     }
                 });
@@ -702,9 +718,18 @@
                             updateDoc(doc(playersRef, userId), { score: currentScore + 10 });
                         }
                     }
-                    previousPhase = data.phase;
 
                     if (data.phase === 'SAFE') {
+                        // Khi ván mới bắt đầu (từ LOBBY hoặc GAMEOVER sang SAFE)
+                        if (previousPhase === 'LOBBY' || previousPhase === 'GAMEOVER') {
+                            if (localPlayer) {
+                                const spawn = getRandomSpawn();
+                                localPlayer.revive(spawn.x, spawn.z);
+                                // Gửi vị trí mới lên server
+                                updateDoc(doc(playersRef, userId), { x: spawn.x, z: spawn.z });
+                            }
+                        }
+
                         if(localPlayer && localPlayer.isAlive) {
                             statusMsg.innerText = "SỐNG SÓT: DI CHUYỂN";
                             statusMsg.style.color = "#00ff00";
@@ -727,7 +752,7 @@
                         }
                         warningLight.intensity = 0;
                         dropTraps(data.traps);
-                        checkLocalDeath(); /* Không truyền traps nữa vì ta lấy closestTile */
+                        /* Dừng gọi checkLocalDeath() ở đây, chuyển nó vào vòng lặp animate() */
                     }
                     else if (data.phase === 'GAMEOVER') {
                         warningLight.intensity = 0;
@@ -737,10 +762,12 @@
                         setTimeout(() => {
                             gameOverScreen.style.display = 'none';
                             showScoreboard();
-                        }, 2000);
-                    }
+                    }, 2000);
                 }
-            }, (err) => console.error(err));
+                
+                previousPhase = data.phase; // Lưu lại trạng thái
+            }
+        }, (err) => console.error(err));
         }
 
         async function sendLocalState() {
@@ -870,8 +897,8 @@
                 }
             });
 
-            // Nếu ô gần nhất là bẫy và đang ở tâm ô
-            if (closestTile && closestTile.userData.isDanger && minDist < (TILE_SIZE * 0.7)) {
+            // Rơi xuống bẫy nếu ô gần nhất đang sụp (y < -1) và khoảng cách đủ gần tâm ô
+            if (closestTile && closestTile.position.y < -1 && minDist < (TILE_SIZE * 0.7)) {
                 localPlayer.die();
                 
                 const currentDeaths = globalPlayersData[userId]?.deaths || 0;
@@ -887,7 +914,7 @@
                 // Đợi 1 giây, tắt hiệu ứng và chuyển sang UI Người Xem
                 setTimeout(() => {
                     deathScreen.style.display = 'none';
-                    if (currentPhase !== 'GAMEOVER') {
+                    if (gameOverScreen.style.display !== 'flex') {
                         statusMsg.innerText = "CHẾ ĐỘ NGƯỜI XEM";
                         statusMsg.style.color = "#888";
                     }
@@ -953,6 +980,8 @@
                 if (localPlayer) {
                     const vec = getMovementVector();
                     localPlayer.updateLocal(dt, vec.x, vec.z);
+                    
+                    checkLocalDeath();
                 }
                 
                 // Remote Players Interpolation
