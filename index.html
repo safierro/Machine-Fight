@@ -169,11 +169,14 @@
             firebaseConfig = myFirebaseConfig;
         }
 
+        // TẬP TRUNG KHAI BÁO CÁC BIẾN UI TẠI ĐÂY
         const statusMsg = document.getElementById('status-message');
-        const lobbyUi = document.getElementById('lobby-ui');
+        const mainMenu = document.getElementById('main-menu');
         const playerListUI = document.getElementById('player-list');
+        const chatListUI = document.getElementById('chat-list');
         const btnStart = document.getElementById('btn-start-game');
         const waitingMsg = document.getElementById('waiting-msg');
+        const roomDisplay = document.getElementById('room-display');
 
         // Chặn lỗi văng ra màn hình trắng nếu đưa lên Github mà chưa nhập key
         if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) {
@@ -181,7 +184,7 @@
             statusMsg.style.color = "#ffaa00";
             waitingMsg.innerText = "Vui lòng mở file index.html, tìm biến 'myFirebaseConfig' và dán cấu hình Firebase của bạn vào để chơi Multiplayer.";
             waitingMsg.style.color = "#ffaa00";
-            throw new Error("Missing Firebase Config. Please add your config to run on GitHub.");
+            throw new Error("Missing Firebase Config.");
         }
 
         const app = initializeApp(firebaseConfig);
@@ -197,13 +200,6 @@
         
         // Quản lý Multiplayer
         const remotePlayers = {}; 
-        const statusMsg = document.getElementById('status-message');
-        const mainMenu = document.getElementById('main-menu');
-        const playerListUI = document.getElementById('player-list');
-        const chatListUI = document.getElementById('chat-list');
-        const btnStart = document.getElementById('btn-start-game');
-        const waitingMsg = document.getElementById('waiting-msg');
-        const roomDisplay = document.getElementById('room-display');
 
         // Unsubscribe listeners (để dọn dẹp khi đổi phòng)
         let unsubPlayers = null;
