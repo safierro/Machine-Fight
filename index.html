@@ -77,9 +77,45 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Khởi tạo Firebase từ môi trường
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'machine-party-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // --- CẤU HÌNH FIREBASE CỦA RIÊNG BẠN (CHO GITHUB PAGES) ---
+        // Thay thế object rỗng {} dưới đây bằng cấu hình lấy từ Firebase Console của bạn.
+        const myFirebaseConfig = {
+            apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
+            authDomain: "machine-fight.firebaseapp.com",
+            projectId: "machine-fight",
+            storageBucket: "machine-fight.firebasestorage.app",
+            messagingSenderId: "51178521196",
+            appId: "1:51178521196:web:fb40f24b0a9c1efbacce49",
+            measurementId: "G-ETMWQ9K11M"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'machine-party-github';
+        
+        // Cố gắng lấy config tự động, nếu không có thì dùng myFirebaseConfig
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) 
+                ? JSON.parse(__firebase_config) 
+                : myFirebaseConfig;
+        } catch (e) {
+            firebaseConfig = myFirebaseConfig;
+        }
+
+        const statusMsg = document.getElementById('status-message');
+        const lobbyUi = document.getElementById('lobby-ui');
+        const playerListUI = document.getElementById('player-list');
+        const btnStart = document.getElementById('btn-start-game');
+        const waitingMsg = document.getElementById('waiting-msg');
+
+        // Chặn lỗi văng ra màn hình trắng nếu đưa lên Github mà chưa nhập key
+        if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) {
+            statusMsg.innerText = "THIẾU CẤU HÌNH FIREBASE!";
+            statusMsg.style.color = "#ffaa00";
+            waitingMsg.innerText = "Vui lòng mở file index.html, tìm biến 'myFirebaseConfig' và dán cấu hình Firebase của bạn vào để chơi Multiplayer.";
+            waitingMsg.style.color = "#ffaa00";
+            throw new Error("Missing Firebase Config. Please add your config to run on GitHub.");
+        }
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
