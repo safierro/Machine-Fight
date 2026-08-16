@@ -17,7 +17,7 @@
         .hidden { display: none !important; }
 
         h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px #ff0000; margin-bottom: 5px; text-transform: uppercase; text-align: center;}
-        .subtitle { font-size: 16px; color: #888; margin-bottom: 40px; text-align: center;}
+        .subtitle { font-size: 16px; color: #888; margin-bottom: 30px; text-align: center;}
 
         /* Nút bấm */
         .btn {
@@ -31,12 +31,15 @@
         .btn-secondary { background: #555; box-shadow: 0 4px 15px rgba(85, 85, 85, 0.4); }
         .btn-secondary:hover { background: #666; }
         
-        .form-group { display: flex; flex-direction: column; width: 300px; margin-bottom: 15px; }
-        .form-group label { color: #00aaff; font-size: 14px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;}
+        .form-group { display: flex; flex-direction: column; width: 300px; margin-bottom: 15px; align-items: center; }
+        .form-group label { color: #00aaff; font-size: 14px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; width: 100%; text-align: left; }
         input[type="text"], input[type="number"], input[type="password"], select {
-            padding: 12px; font-size: 16px; border-radius: 5px; border: 2px solid #333; background: #111; color: #fff; outline: none; font-family: inherit;
+            padding: 12px; font-size: 16px; border-radius: 5px; border: 2px solid #333; background: #111; color: #fff; outline: none; font-family: inherit; width: 100%; box-sizing: border-box;
         }
         input:focus, select:focus { border-color: #00aaff; }
+
+        /* Khung Tên Ngay Trang Chủ */
+        #myPlayerName { text-align: center; font-size: 22px; font-weight: bold; border-color: #0088ff; background: rgba(0, 136, 255, 0.1); }
 
         /* Bảng Danh Sách Phòng */
         .room-browser { width: 90%; max-width: 800px; height: 50vh; background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 10px; padding: 20px; overflow-y: auto; margin-bottom: 20px;}
@@ -53,12 +56,12 @@
         .panel { background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; }
         .panel-title { color: #00aaff; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .player-list { flex: 1; list-style: none; padding: 0; margin: 0; overflow-y: auto; }
-        .player-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.5); margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #fff; }
+        .player-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.5); margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #fff; font-size: 18px; }
         .player-color { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; border: 2px solid #fff; }
         
         /* Chat */
         .chat-box { flex: 1; display: flex; flex-direction: column; height: 100%; }
-        .chat-messages { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px;}
+        .chat-messages { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 15px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px;}
         .chat-msg { padding: 5px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; }
         .chat-sys { color: #888; font-style: italic; }
         .chat-input-row { display: flex; gap: 10px; }
@@ -90,9 +93,15 @@
         <div class="subtitle">ĐANG KẾT NỐI MÁY CHỦ...</div>
     </div>
 
+    <!-- MAIN MENU MỚI CÓ NHẬP TÊN -->
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
+        
+        <div class="form-group" style="margin-bottom: 30px;">
+            <input type="text" id="myPlayerName" placeholder="TÊN CỦA BẠN..." maxlength="12">
+        </div>
+
         <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
         <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
     </div>
@@ -190,6 +199,7 @@
         const db = getFirestore(app);
 
         let myId = null;
+        let myName = "Player"; // Tên người chơi lưu biến toàn cục
         let currentRoomId = null;
         let isHost = false;
         let gameActive = false;
@@ -199,11 +209,11 @@
         let serverPhase = 'IDLE'; 
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
-        let serverDangerLetters = {}; // Lưu trữ cố định chữ sai cho từng ô khi sập bẫy
+        let serverDangerLetters = {}; 
+        let serverBrokenTiles = []; // Mảng chứa các hố bị vỡ vĩnh viễn
         let serverRound = 1;
 
-        // GIẢM TỐC ĐỘ DI CHUYỂN
-        let myPlayer = { x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
+        let myPlayer = { name: "Player", x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
         const moveSpeed = 0.08; 
         const keys = { w: false, a: false, s: false, d: false };
         const gridSize = 9;
@@ -258,7 +268,7 @@
             return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
         }
 
-        const matBlank = createTileMaterial('', '#444444', '#fff');
+        const matBlank = createTileMaterial('', '#444444', '#fff'); // Gạch trống
         const matsNormal = {
             'X': createTileMaterial('X', '#333333', '#ffffff'),
             'Y': createTileMaterial('Y', '#333333', '#ffffff'),
@@ -290,17 +300,23 @@
         scene.add(floorGroup);
         const playerMeshes = {};
 
-        // --- ĐĂNG NHẬP FIREBASE ---
+        // --- ĐĂNG NHẬP FIREBASE & UI ---
         signInAnonymously(auth).then((userCred) => {
             myId = userCred.user.uid;
+            document.getElementById('myPlayerName').value = "Khách_" + myId.substring(0,4);
             showScreen('mainMenu');
         }).catch(err => alert("Lỗi kết nối máy chủ: " + err.message));
 
         document.getElementById('navCreateRoom').onclick = () => {
-            document.getElementById('crRoomName').value = `Phòng của ${myId.substring(0,4)}`;
+            myName = document.getElementById('myPlayerName').value.trim() || "Người Chơi";
+            document.getElementById('crRoomName').value = `Phòng của ${myName}`;
             showScreen('createRoom');
         };
-        document.getElementById('navJoinRoom').onclick = () => { showScreen('joinRoom'); listenToRoomList(); };
+        document.getElementById('navJoinRoom').onclick = () => { 
+            myName = document.getElementById('myPlayerName').value.trim() || "Người Chơi";
+            showScreen('joinRoom'); 
+            listenToRoomList(); 
+        };
         document.getElementById('crPrivacy').onchange = (e) => { document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public'); };
         document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
         document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
@@ -320,8 +336,8 @@
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
-                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, round: 1 },
-                    players: { [myId]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
+                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, brokenTiles: [], round: 1 },
+                    players: { [myId]: { name: myName, x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
             } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
@@ -335,7 +351,7 @@
 
             unsubscribeRoomList = onSnapshot(collection(db, "rooms"), (snapshot) => {
                 roomListUI.innerHTML = '';
-                if (snapshot.empty) return roomListUI.innerHTML = '<div style="text-align:center; color:#888;">Chưa có phòng nào được tạo.</div>';
+                if (snapshot.empty) return roomListUI.innerHTML = '<div style="text-align:center; color:#888;">Chưa có phòng nào đang mở.</div>';
 
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data(); const rId = docSnap.id;
@@ -367,7 +383,7 @@
             }
             const myColor = Math.floor(Math.random()*16777215);
             try {
-                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 } });
+                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 } });
                 if(unsubscribeRoomList) unsubscribeRoomList();
                 enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
             } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
@@ -384,7 +400,7 @@
             showScreen('lobby');
             document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
             listenToCurrentRoom(); listenToChat();
-            sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã tham gia.`);
+            sendSystemMessage(`Người chơi [${myName}] đã tham gia.`);
         }
 
         function listenToCurrentRoom() {
@@ -417,7 +433,8 @@
                     serverPhase = state.phase; 
                     serverTargetLetter = state.targetLetter || '?';
                     serverSafeTiles = state.safeTiles || []; 
-                    serverDangerLetters = state.dangerLetters || {}; // Load bộ chữ sai cố định
+                    serverDangerLetters = state.dangerLetters || {}; 
+                    serverBrokenTiles = state.brokenTiles || []; // Cập nhật danh sách HỐ vĩnh viễn
                     serverRound = state.round || 1;
 
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
@@ -441,7 +458,7 @@
 
         async function sendMessage(text, isSys = false) {
             if (!text.trim() || !currentRoomId) return;
-            await addDoc(collection(db, "rooms", currentRoomId, "chat"), { text: text, sender: isSys ? "Hệ thống" : myId.substring(0,4), time: Date.now(), sys: isSys });
+            await addDoc(collection(db, "rooms", currentRoomId, "chat"), { text: text, sender: isSys ? "Hệ thống" : myName, time: Date.now(), sys: isSys });
         }
         const sendSystemMessage = (t) => sendMessage(t, true);
 
@@ -461,10 +478,9 @@
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
         });
 
-        // --- HOST LOGIC (CẬP NHẬT CƠ CHẾ ROLL CHỮ) ---
+        // --- HOST LOGIC (THÊM CƠ CHẾ HỐ VĨNH VIỄN) ---
         document.getElementById('btnStartGame').onclick = async () => {
-            // Đảm bảo khởi tạo lại điểm và mạng sống cho TẤT CẢ mọi người khi bắt đầu ván mới
-            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 };
+            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1, "gameState.brokenTiles": [] };
             for (let p in players) {
                 updates[`players.${p}.isAlive`] = true;
                 updates[`players.${p}.score`] = 0; 
@@ -482,44 +498,44 @@
                 phaseTime++;
 
                 if (serverPhase === 'IDLE' && phaseTime >= 3) {
-                    // PHA 1: Quay chữ ngẫu nhiên cả bảng lẫn sàn
                     serverPhase = 'ROLLING'; phaseTime = 0;
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.targetLetter": '?' });
                 } 
                 else if (serverPhase === 'ROLLING' && phaseTime >= 4) {
-                    // PHA 2: Chốt chữ, sàn và bảng đều dừng quay
                     serverPhase = 'LOCKED'; phaseTime = 0;
                     
                     let target = lettersList[Math.floor(Math.random()*lettersList.length)];
-                    let safeCount = Math.max(1, 20 - (serverRound * 3)); // Số ô an toàn giảm dần
-                    let allIndices = Array.from({length: 81}, (_, i) => i);
+                    let safeCount = Math.max(1, 20 - (serverRound * 3)); 
+                    
+                    // Lọc ra các ô CHƯA BỊ VỠ để làm ô an toàn
+                    let allActiveIndices = Array.from({length: 81}, (_, i) => i).filter(i => !serverBrokenTiles.includes(i));
+                    safeCount = Math.min(safeCount, allActiveIndices.length); // Không được chọn dư
+                    
                     let safeArr = [];
                     for(let i=0; i<safeCount; i++) {
-                        let rIdx = Math.floor(Math.random() * allIndices.length);
-                        safeArr.push(allIndices[rIdx]); allIndices.splice(rIdx, 1);
+                        let rIdx = Math.floor(Math.random() * allActiveIndices.length);
+                        safeArr.push(allActiveIndices[rIdx]); allActiveIndices.splice(rIdx, 1);
                     }
                     
-                    // Tạo một bộ "Chữ Sai" tĩnh cho các ô sập bẫy để nó KHÔNG nhảy loạn xạ nữa
+                    // Gắn chữ sai tĩnh
                     let dLetters = {};
-                    allIndices.forEach(idx => {
-                        let wLetters = lettersList.filter(l => l !== target);
-                        dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
+                    Array.from({length: 81}, (_, i) => i).forEach(idx => {
+                        if(!safeArr.includes(idx) && !serverBrokenTiles.includes(idx)) {
+                            let wLetters = lettersList.filter(l => l !== target);
+                            dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
+                        }
                     });
 
                     await updateDoc(doc(db, "rooms", currentRoomId), { 
-                        "gameState.phase": serverPhase, 
-                        "gameState.targetLetter": target,
-                        "gameState.safeTiles": safeArr,
-                        "gameState.dangerLetters": dLetters
+                        "gameState.phase": serverPhase, "gameState.targetLetter": target,
+                        "gameState.safeTiles": safeArr, "gameState.dangerLetters": dLetters
                     });
                 }
                 else if (serverPhase === 'LOCKED' && phaseTime >= 2) {
-                    // PHA 3: Sập bẫy
                     serverPhase = 'DROP'; phaseTime = 0;
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase });
                 }
                 else if (serverPhase === 'DROP' && phaseTime >= 3) {
-                    // Kiểm tra kết thúc ván
                     let aliveCount = Object.values(players).filter(p => p.isAlive).length;
                     let totalPlayers = Object.keys(players).length;
                     
@@ -527,14 +543,29 @@
                         clearInterval(hostGameLoop);
                         await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
                     } else {
+                        // CHUẨN BỊ VÒNG MỚI: Chọn ngẫu nhiên vài ô vừa sập để biến thành HỐ VĨNH VIỄN
+                        let droppedTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverBrokenTiles.includes(i));
+                        let newBrokenTiles = [...serverBrokenTiles];
+                        let breakCount = Math.min(3, droppedTiles.length); // Mỗi vòng thêm 3 hố
+                        
+                        for (let i = 0; i < breakCount; i++) {
+                            let rIdx = Math.floor(Math.random() * droppedTiles.length);
+                            newBrokenTiles.push(droppedTiles[rIdx]);
+                            droppedTiles.splice(rIdx, 1);
+                        }
+
                         serverPhase = 'IDLE'; phaseTime = 0; serverRound++;
-                        await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.round": serverRound });
+                        await updateDoc(doc(db, "rooms", currentRoomId), { 
+                            "gameState.phase": serverPhase, 
+                            "gameState.round": serverRound,
+                            "gameState.brokenTiles": newBrokenTiles
+                        });
                     }
                 }
             }, 1000);
         }
 
-        // --- CLIENT UI VÀ SCOREBOARD CHI TIẾT ---
+        // --- CLIENT UI VÀ SCOREBOARD ---
         function startGameClient(roomName) {
             showScreen('');
             document.getElementById('gameUI').style.display = 'block';
@@ -563,7 +594,7 @@
             if (unsubscribeChat) unsubscribeChat();
 
             if (currentRoomId) {
-                sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã thoát.`);
+                sendSystemMessage(`Người chơi [${myName}] đã thoát.`);
                 const pCount = Object.keys(players).length;
                 if (pCount <= 1) {
                     await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
@@ -600,14 +631,15 @@
             arr.forEach((p, idx) => {
                 let statusInfo = p.isAlive ? '(Sống)' : '(Đã ướt)';
                 let deathCount = p.isAlive ? 0 : 1;
+                let displayName = p.name || p.id.substring(0,4);
                 sbHTML += `<div class="score-row" style="color: #${p.color.toString(16).padStart(6,'0')}">
-                    <span>#${idx+1} ${p.id.substring(0,4)} ${statusInfo}</span>
+                    <span>#${idx+1} ${displayName} ${statusInfo}</span>
                     <span>${p.kills} / ${deathCount}</span>
                     <span>${p.score}</span>
                 </div>`;
             });
             document.getElementById('scoreboard').innerHTML = sbHTML;
-            document.getElementById('winnerAnnouncement').innerText = (arr[0] && arr[0].isAlive) ? `NGƯỜI CHIẾN THẮNG: ${arr[0].id.substring(0,4)}` : "TẤT CẢ ĐỀU ĐÃ ƯỚT";
+            document.getElementById('winnerAnnouncement').innerText = (arr[0] && arr[0].isAlive) ? `NGƯỜI CHIẾN THẮNG: ${arr[0].name || arr[0].id.substring(0,4)}` : "TẤT CẢ ĐỀU ĐÃ ƯỚT";
         }
 
         function updateLobbyUI() {
@@ -615,7 +647,8 @@
             for (let uid in players) {
                 const p = players[uid]; const hexColor = '#' + p.color.toString(16).padStart(6, '0');
                 const hostTag = p.isHost ? ' 👑(Chủ)' : ''; const meTag = uid === myId ? ' (Bạn)' : '';
-                listUI.innerHTML += `<li class="player-item"><div class="player-color" style="background: ${hexColor}"></div><div>${uid.substring(0,6)}${meTag}${hostTag}</div></li>`;
+                const displayName = p.name || uid.substring(0,6);
+                listUI.innerHTML += `<li class="player-item"><div class="player-color" style="background: ${hexColor}"></div><div>${displayName}${meTag}${hostTag}</div></li>`;
             }
         }
 
@@ -630,7 +663,7 @@
                 }
                 playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.1);
                 playerMeshes[id].position.z = THREE.MathUtils.lerp(playerMeshes[id].position.z, pData.z, 0.1);
-                playerMeshes[id].position.y = pData.isAlive ? 0.5 : -1.5;
+                playerMeshes[id].position.y = pData.isAlive ? 0.5 : -2;
             }
         }
 
@@ -646,42 +679,48 @@
                 
                 if (serverPhase === 'IDLE') tb.style.borderColor = '#444';
                 else if (serverPhase === 'ROLLING') {
-                    // Cứ 20 khung hình mới roll 1 lần để mắt đọc được chữ
                     if (frameCount % 20 === 0) tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
                     tb.style.borderColor = '#00aaff';
                 }
                 else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
 
                 tiles.forEach((tile, index) => {
-                    if (serverPhase === 'IDLE') {
-                        tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
+                    // ƯU TIÊN XỬ LÝ HỐ VĨNH VIỄN TRƯỚC TIÊN
+                    if (serverBrokenTiles.includes(index)) {
+                        tile.userData.targetY = -2.5; 
+                        tile.material = matBlank; 
+                        tile.userData.isDanger = true;
                     } 
-                    else if (serverPhase === 'ROLLING') {
-                        tile.userData.targetY = -0.25; tile.userData.isDanger = false;
-                        if (frameCount % 20 === 0) {
-                            tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                    else {
+                        // LOGIC BÌNH THƯỜNG CHO CÁC Ô CÒN LẠI
+                        if (serverPhase === 'IDLE') {
+                            tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
+                        } 
+                        else if (serverPhase === 'ROLLING') {
+                            tile.userData.targetY = -0.25; tile.userData.isDanger = false;
+                            if (frameCount % 20 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                        }
+                        else if (serverPhase === 'LOCKED') {
+                            tile.userData.targetY = -0.25;
+                            if (serverSafeTiles.includes(index)) {
+                                tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
+                            } else {
+                                let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                                tile.material = matsDanger[dl]; tile.userData.isDanger = true;
+                            }
+                        }
+                        else if (serverPhase === 'DROP') {
+                            if (serverSafeTiles.includes(index)) {
+                                tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
+                            } else {
+                                let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                                tile.material = matsDanger[dl]; tile.userData.isDanger = true;
+                                tile.userData.targetY = -2.5; 
+                            }
                         }
                     }
-                    else if (serverPhase === 'LOCKED') {
-                        tile.userData.targetY = -0.25;
-                        if (serverSafeTiles.includes(index)) {
-                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
-                        } else {
-                            // Gọi tĩnh chữ sai được lấy từ Server (Không bao giờ nhảy nữa)
-                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
-                        }
-                    }
-                    else if (serverPhase === 'DROP') {
-                        // Vật liệu giữ nguyên giống pha LOCKED
-                        if (serverSafeTiles.includes(index)) {
-                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
-                        } else {
-                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
-                            tile.userData.targetY = -2.5; 
-                        }
-                    }
+                    
+                    // Lên xuống mượt mà
                     tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
                 });
 
@@ -722,8 +761,7 @@
         }
 
         function checkDeath() {
-            // FIX QUAN TRỌNG: Chỉ cho phép "Chết" khi bẫy đang SẬP XUỐNG
-            if (!myPlayer.isAlive || serverPhase !== 'DROP') return; 
+            if (!myPlayer.isAlive) return; 
             
             let closestTile = null; let minDist = Infinity;
             tiles.forEach(tile => {
@@ -731,7 +769,8 @@
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
             
-            if (closestTile && closestTile.position.y < -1) {
+            // Va chạm thông minh: Nếu ô dưới chân lún quá -1.5, bạn sẽ chết (Áp dụng cho mọi Phase để ngừa hố vĩnh viễn)
+            if (closestTile && closestTile.position.y < -1.5) {
                 myPlayer.isAlive = false; 
                 const st = document.getElementById('statusText');
                 st.innerText = "BẠN ĐÃ ƯỚT"; st.style.display = 'block'; 
