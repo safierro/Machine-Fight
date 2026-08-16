@@ -93,13 +93,13 @@
         <div class="subtitle">ĐANG KẾT NỐI MÁY CHỦ...</div>
     </div>
 
-    <!-- MAIN MENU MỚI CÓ NHẬP TÊN -->
+    <!-- MAIN MENU MỚI -->
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
         
         <div class="form-group" style="margin-bottom: 30px;">
-            <input type="text" id="myPlayerName" placeholder="TÊN CỦA BẠN..." maxlength="12">
+            <input type="text" id="myPlayerName" placeholder="TÊN (VD: safierro)..." maxlength="12">
         </div>
 
         <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
@@ -199,7 +199,7 @@
         const db = getFirestore(app);
 
         let myId = null;
-        let myName = "Player"; // Tên người chơi lưu biến toàn cục
+        let myName = "Player";
         let currentRoomId = null;
         let isHost = false;
         let gameActive = false;
@@ -210,7 +210,6 @@
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
         let serverDangerLetters = {}; 
-        let serverBrokenTiles = []; // Mảng chứa các hố bị vỡ vĩnh viễn
         let serverRound = 1;
 
         let myPlayer = { name: "Player", x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
@@ -268,7 +267,7 @@
             return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
         }
 
-        const matBlank = createTileMaterial('', '#444444', '#fff'); // Gạch trống
+        const matBlank = createTileMaterial('', '#444444', '#fff');
         const matsNormal = {
             'X': createTileMaterial('X', '#333333', '#ffffff'),
             'Y': createTileMaterial('Y', '#333333', '#ffffff'),
@@ -303,7 +302,7 @@
         // --- ĐĂNG NHẬP FIREBASE & UI ---
         signInAnonymously(auth).then((userCred) => {
             myId = userCred.user.uid;
-            document.getElementById('myPlayerName').value = "Khách_" + myId.substring(0,4);
+            // Không gán value để giữ Text Placeholder "VD: safierro" hiển thị đẹp mắt
             showScreen('mainMenu');
         }).catch(err => alert("Lỗi kết nối máy chủ: " + err.message));
 
@@ -336,7 +335,7 @@
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
-                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, brokenTiles: [], round: 1 },
+                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, round: 1 },
                     players: { [myId]: { name: myName, x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
@@ -434,7 +433,6 @@
                     serverTargetLetter = state.targetLetter || '?';
                     serverSafeTiles = state.safeTiles || []; 
                     serverDangerLetters = state.dangerLetters || {}; 
-                    serverBrokenTiles = state.brokenTiles || []; // Cập nhật danh sách HỐ vĩnh viễn
                     serverRound = state.round || 1;
 
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
@@ -478,9 +476,9 @@
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
         });
 
-        // --- HOST LOGIC (THÊM CƠ CHẾ HỐ VĨNH VIỄN) ---
+        // --- HOST LOGIC (SỬA LỖI ĐỒNG BỘ GAMEOVER & SỤT LÚN TĂNG DẦN) ---
         document.getElementById('btnStartGame').onclick = async () => {
-            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1, "gameState.brokenTiles": [] };
+            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 };
             for (let p in players) {
                 updates[`players.${p}.isAlive`] = true;
                 updates[`players.${p}.score`] = 0; 
@@ -495,6 +493,17 @@
             
             hostGameLoop = setInterval(async () => {
                 if (!gameActive || !isHost) return clearInterval(hostGameLoop);
+
+                // KIỂM TRA LIÊN TỤC: ĐÃ CHẾT HẾT CHƯA?
+                let aliveCount = Object.values(players).filter(p => p.isAlive).length;
+                let totalPlayers = Object.keys(players).length;
+
+                if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
+                    clearInterval(hostGameLoop);
+                    await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
+                    return; // Chết hết thì dừng loop ngay lập tức
+                }
+
                 phaseTime++;
 
                 if (serverPhase === 'IDLE' && phaseTime >= 3) {
@@ -503,27 +512,28 @@
                 } 
                 else if (serverPhase === 'ROLLING' && phaseTime >= 4) {
                     serverPhase = 'LOCKED'; phaseTime = 0;
-                    
                     let target = lettersList[Math.floor(Math.random()*lettersList.length)];
-                    let safeCount = Math.max(1, 20 - (serverRound * 3)); 
                     
-                    // Lọc ra các ô CHƯA BỊ VỠ để làm ô an toàn
-                    let allActiveIndices = Array.from({length: 81}, (_, i) => i).filter(i => !serverBrokenTiles.includes(i));
-                    safeCount = Math.min(safeCount, allActiveIndices.length); // Không được chọn dư
+                    // Lôgic: Vòng 1 = 2 ô, Vòng 2 = 6 ô, Vòng 3 = 10 ô... (Cộng thêm 4 mỗi vòng)
+                    let dangerCount = 2 + (serverRound - 1) * 4;
+                    if (dangerCount >= 81) dangerCount = 80; // Giới hạn để luôn còn 1 ô an toàn
                     
-                    let safeArr = [];
-                    for(let i=0; i<safeCount; i++) {
-                        let rIdx = Math.floor(Math.random() * allActiveIndices.length);
-                        safeArr.push(allActiveIndices[rIdx]); allActiveIndices.splice(rIdx, 1);
+                    let allIndices = Array.from({length: 81}, (_, i) => i);
+                    let dangerArr = [];
+                    for(let i=0; i<dangerCount; i++) {
+                        let rIdx = Math.floor(Math.random() * allIndices.length);
+                        dangerArr.push(allIndices[rIdx]); 
+                        allIndices.splice(rIdx, 1);
                     }
                     
-                    // Gắn chữ sai tĩnh
+                    // Số còn lại là Safe
+                    let safeArr = allIndices;
+
+                    // Gắn tĩnh chữ sai (Chỉ gán chữ sai cho các ô sụp đổ)
                     let dLetters = {};
-                    Array.from({length: 81}, (_, i) => i).forEach(idx => {
-                        if(!safeArr.includes(idx) && !serverBrokenTiles.includes(idx)) {
-                            let wLetters = lettersList.filter(l => l !== target);
-                            dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
-                        }
+                    dangerArr.forEach(idx => {
+                        let wLetters = lettersList.filter(l => l !== target);
+                        dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
                     });
 
                     await updateDoc(doc(db, "rooms", currentRoomId), { 
@@ -536,31 +546,12 @@
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase });
                 }
                 else if (serverPhase === 'DROP' && phaseTime >= 3) {
-                    let aliveCount = Object.values(players).filter(p => p.isAlive).length;
-                    let totalPlayers = Object.keys(players).length;
-                    
-                    if (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1)) {
-                        clearInterval(hostGameLoop);
-                        await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
-                    } else {
-                        // CHUẨN BỊ VÒNG MỚI: Chọn ngẫu nhiên vài ô vừa sập để biến thành HỐ VĨNH VIỄN
-                        let droppedTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverBrokenTiles.includes(i));
-                        let newBrokenTiles = [...serverBrokenTiles];
-                        let breakCount = Math.min(3, droppedTiles.length); // Mỗi vòng thêm 3 hố
-                        
-                        for (let i = 0; i < breakCount; i++) {
-                            let rIdx = Math.floor(Math.random() * droppedTiles.length);
-                            newBrokenTiles.push(droppedTiles[rIdx]);
-                            droppedTiles.splice(rIdx, 1);
-                        }
-
-                        serverPhase = 'IDLE'; phaseTime = 0; serverRound++;
-                        await updateDoc(doc(db, "rooms", currentRoomId), { 
-                            "gameState.phase": serverPhase, 
-                            "gameState.round": serverRound,
-                            "gameState.brokenTiles": newBrokenTiles
-                        });
-                    }
+                    // Không cần kiểm tra chết hết ở đây nữa vì đã kiểm tra ở trên cùng
+                    serverPhase = 'IDLE'; phaseTime = 0; serverRound++;
+                    await updateDoc(doc(db, "rooms", currentRoomId), { 
+                        "gameState.phase": serverPhase, 
+                        "gameState.round": serverRound
+                    });
                 }
             }, 1000);
         }
@@ -685,38 +676,29 @@
                 else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
 
                 tiles.forEach((tile, index) => {
-                    // ƯU TIÊN XỬ LÝ HỐ VĨNH VIỄN TRƯỚC TIÊN
-                    if (serverBrokenTiles.includes(index)) {
-                        tile.userData.targetY = -2.5; 
-                        tile.material = matBlank; 
-                        tile.userData.isDanger = true;
+                    if (serverPhase === 'IDLE') {
+                        tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
                     } 
-                    else {
-                        // LOGIC BÌNH THƯỜNG CHO CÁC Ô CÒN LẠI
-                        if (serverPhase === 'IDLE') {
-                            tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
-                        } 
-                        else if (serverPhase === 'ROLLING') {
-                            tile.userData.targetY = -0.25; tile.userData.isDanger = false;
-                            if (frameCount % 20 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                    else if (serverPhase === 'ROLLING') {
+                        tile.userData.targetY = -0.25; tile.userData.isDanger = false;
+                        if (frameCount % 20 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                    }
+                    else if (serverPhase === 'LOCKED') {
+                        tile.userData.targetY = -0.25;
+                        if (serverSafeTiles.includes(index)) {
+                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
+                        } else {
+                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
                         }
-                        else if (serverPhase === 'LOCKED') {
-                            tile.userData.targetY = -0.25;
-                            if (serverSafeTiles.includes(index)) {
-                                tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
-                            } else {
-                                let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                                tile.material = matsDanger[dl]; tile.userData.isDanger = true;
-                            }
-                        }
-                        else if (serverPhase === 'DROP') {
-                            if (serverSafeTiles.includes(index)) {
-                                tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
-                            } else {
-                                let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                                tile.material = matsDanger[dl]; tile.userData.isDanger = true;
-                                tile.userData.targetY = -2.5; 
-                            }
+                    }
+                    else if (serverPhase === 'DROP') {
+                        if (serverSafeTiles.includes(index)) {
+                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
+                        } else {
+                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
+                            tile.userData.targetY = -2.5; 
                         }
                     }
                     
@@ -761,7 +743,7 @@
         }
 
         function checkDeath() {
-            if (!myPlayer.isAlive) return; 
+            if (!myPlayer.isAlive || serverPhase !== 'DROP') return; 
             
             let closestTile = null; let minDist = Infinity;
             tiles.forEach(tile => {
@@ -769,7 +751,6 @@
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
             
-            // Va chạm thông minh: Nếu ô dưới chân lún quá -1.5, bạn sẽ chết (Áp dụng cho mọi Phase để ngừa hố vĩnh viễn)
             if (closestTile && closestTile.position.y < -1.5) {
                 myPlayer.isAlive = false; 
                 const st = document.getElementById('statusText');
