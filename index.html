@@ -9,7 +9,6 @@
         body { margin: 0; overflow: hidden; background-color: #0a0a0a; color: #fff; font-family: 'Oswald', sans-serif; user-select: none; }
         canvas { display: block; }
         
-        /* Layout dùng chung cho các màn hình UI */
         .screen {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: radial-gradient(circle, #1a1a1a, #000);
@@ -32,7 +31,6 @@
         .btn-secondary { background: #555; box-shadow: 0 4px 15px rgba(85, 85, 85, 0.4); }
         .btn-secondary:hover { background: #666; }
         
-        /* Form Inputs */
         .form-group { display: flex; flex-direction: column; width: 300px; margin-bottom: 15px; }
         .form-group label { color: #00aaff; font-size: 14px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;}
         input[type="text"], input[type="number"], input[type="password"], select {
@@ -40,7 +38,7 @@
         }
         input:focus, select:focus { border-color: #00aaff; }
 
-        /* Bảng Danh Sách Phòng (Server Browser) */
+        /* Bảng Danh Sách Phòng */
         .room-browser { width: 90%; max-width: 800px; height: 50vh; background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 10px; padding: 20px; overflow-y: auto; margin-bottom: 20px;}
         .room-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #0088ff; }
         .room-row.playing { border-left-color: #ff3333; opacity: 0.7; }
@@ -50,7 +48,7 @@
         .room-details span { margin-right: 15px; }
         .btn-join { width: auto; padding: 10px 20px; margin: 0; font-size: 16px; }
 
-        /* Giao diện Sảnh Lobby */
+        /* Sảnh Lobby */
         .lobby-container { display: flex; gap: 20px; width: 90%; max-width: 1000px; height: 60vh; }
         .panel { background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; }
         .panel-title { color: #00aaff; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
@@ -78,21 +76,20 @@
         #inGameChatMessages { height: 150px; overflow-y: auto; padding: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px; }
         #inGameChatInput { margin: 0; width: 100%; padding: 10px; font-size: 14px; border: none; border-top: 1px solid #444; border-radius: 0 0 5px 5px; box-sizing: border-box; background: rgba(0,0,0,0.8); color: #fff; }
 
-        #scoreboard { display: flex; flex-direction: column; width: 80%; max-width: 600px; }
-        .score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 5px; border-radius: 5px; font-size: 20px;}
-        .score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; }
+        /* Scoreboard (Bảng K/D) */
+        #scoreboard { display: flex; flex-direction: column; width: 100%; max-width: 700px; margin-top: 20px; }
+        .score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 15px 25px; margin-bottom: 5px; border-radius: 5px; font-size: 20px; font-weight: bold;}
+        .score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; background: rgba(0, 170, 255, 0.1); }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <!-- 1. Màn hình Chờ Khởi Tạo -->
     <div id="loadingScreen" class="screen">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ĐANG KẾT NỐI MÁY CHỦ...</div>
     </div>
 
-    <!-- 2. Màn hình Main Menu -->
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
@@ -100,20 +97,16 @@
         <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
     </div>
 
-    <!-- 3. Màn hình Tạo Phòng -->
     <div id="createRoomScreen" class="screen hidden">
         <h1>TẠO PHÒNG</h1>
-        
         <div class="form-group">
             <label>Tên phòng</label>
             <input type="text" id="crRoomName" placeholder="Nhập tên phòng..." maxlength="20">
         </div>
-        
         <div class="form-group">
             <label>Số lượng người chơi tối đa (2-8)</label>
             <input type="number" id="crMaxPlayers" min="2" max="8" value="8">
         </div>
-
         <div class="form-group">
             <label>Chế độ phòng</label>
             <select id="crPrivacy">
@@ -121,31 +114,23 @@
                 <option value="private">Riêng tư (Cần mật khẩu)</option>
             </select>
         </div>
-
         <div class="form-group hidden" id="crPasswordGroup">
             <label>Mật khẩu</label>
             <input type="text" id="crPassword" placeholder="Nhập mật khẩu..." maxlength="15">
         </div>
-
         <button class="btn" id="btnCreateRoomSubmit">TẠO VÀ VÀO PHÒNG</button>
         <button class="btn btn-secondary" id="btnBackFromCreate">QUAY LẠI</button>
     </div>
 
-    <!-- 4. Màn hình Tìm Phòng (Server Browser) -->
     <div id="joinRoomScreen" class="screen hidden">
         <h1>DANH SÁCH PHÒNG</h1>
-        <div class="room-browser" id="roomListUI">
-            <!-- Dữ liệu phòng sẽ được chèn vào đây -->
-            <div style="text-align: center; color: #888; margin-top: 20px;">Đang tải danh sách...</div>
-        </div>
+        <div class="room-browser" id="roomListUI"></div>
         <button class="btn btn-secondary" id="btnBackFromJoin">QUAY LẠI</button>
     </div>
 
-    <!-- 5. Sảnh Chờ (Lobby) -->
     <div id="lobbyScreen" class="screen hidden">
         <h1 id="lobbyTitle">SẢNH CHỜ</h1>
         <div class="subtitle" id="lobbyRoomDisplay">PHÒNG: ĐANG TẢI...</div>
-        
         <div class="lobby-container">
             <div class="panel" style="flex: 1;">
                 <div class="panel-title" id="lobbyPlayerCountTitle">NGƯỜI CHƠI (0/8)</div>
@@ -153,7 +138,6 @@
                 <button class="btn" id="btnStartGame" style="width:100%; margin: 15px 0 0 0; display: none;">BẮT ĐẦU GAME</button>
                 <button class="btn btn-danger" id="btnExitLobby" style="width:100%; margin: 10px 0 0 0;">THOÁT PHÒNG</button>
             </div>
-            
             <div class="panel chat-box">
                 <div class="panel-title">KÊNH CHAT</div>
                 <div class="chat-messages" id="lobbyChatMessages"></div>
@@ -165,7 +149,7 @@
         </div>
     </div>
 
-    <!-- 6. Màn hình Kết Thúc -->
+    <!-- Màn Hình Kết Thúc (Game Over + Scoreboard) -->
     <div id="gameOverScreen" class="screen hidden">
         <h1 style="font-size: 80px;">KẾT THÚC</h1>
         <div class="subtitle" id="winnerAnnouncement">Chờ thống kê...</div>
@@ -174,7 +158,6 @@
         <div class="subtitle" id="waitingHostText" style="margin-top: 20px;">Đang chờ chủ phòng...</div>
     </div>
 
-    <!-- 7. Giao diện In-Game UI -->
     <div id="gameUI">
         <div class="top-bar">
             <div id="roomCodeDisplay">Phòng: ???</div>
@@ -193,7 +176,6 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // Cấu hình Firebase
         const myFirebaseConfig = {
             apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
             authDomain: "machine-fight.firebaseapp.com",
@@ -208,22 +190,18 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- CÁC BIẾN TOÀN CỤC ---
         let myId = null;
         let currentRoomId = null;
         let isHost = false;
         let gameActive = false;
         let players = {};
         let hostGameLoop = null;
-        let roomMaxPlayers = 8;
 
-        // State Đồng Bộ Game
         let serverPhase = 'IDLE'; 
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
         let serverRound = 1;
 
-        // State Local 3D
         let myPlayer = { x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
         const moveSpeed = 0.15;
         const keys = { w: false, a: false, s: false, d: false };
@@ -231,7 +209,6 @@
         const tileSize = 2;
         const lettersList = ['X', 'Y', 'Z'];
 
-        // CÁC MÀN HÌNH
         const screens = {
             loading: document.getElementById('loadingScreen'),
             mainMenu: document.getElementById('mainMenuScreen'),
@@ -246,7 +223,7 @@
             if(screens[screenName]) screens[screenName].classList.remove('hidden');
         }
 
-        // ================= KHỞI TẠO THREE.JS (Canvas mượt mà) =================
+        // --- TẠO MÔI TRƯỜNG 3D ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a0a);
         scene.fog = new THREE.Fog(0x0a0a0a, 15, 60);
@@ -266,7 +243,6 @@
         const spotLight = new THREE.SpotLight(0xfffaee, 1.5);
         spotLight.position.set(0, 30, 0); spotLight.castShadow = true; scene.add(spotLight);
 
-        // Sinh Texture Canvas
         function createTileMaterial(letter, bgColorHex, textColorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 256;
@@ -306,22 +282,19 @@
             for (let z = 0; z < gridSize; z++) {
                 const mesh = new THREE.Mesh(tileGeo, matBlank);
                 mesh.position.set((x - Math.floor(gridSize/2)) * tileSize, -0.25, (z - Math.floor(gridSize/2)) * tileSize);
-                mesh.receiveShadow = true;
-                mesh.userData = { targetY: -0.25, isDanger: false };
-                floorGroup.add(mesh);
-                tiles.push(mesh);
+                mesh.receiveShadow = true; mesh.userData = { targetY: -0.25, isDanger: false };
+                floorGroup.add(mesh); tiles.push(mesh);
             }
         }
         scene.add(floorGroup);
         const playerMeshes = {};
 
-        // ================= FIREBASE AUTH & UI ĐIỀU HƯỚNG =================
+        // --- ĐĂNG NHẬP FIREBASE ---
         signInAnonymously(auth).then((userCred) => {
             myId = userCred.user.uid;
             showScreen('mainMenu');
         }).catch(err => alert("Lỗi kết nối máy chủ: " + err.message));
 
-        // Nút Main Menu
         document.getElementById('navCreateRoom').onclick = () => {
             document.getElementById('crRoomName').value = `Phòng của ${myId.substring(0,4)}`;
             showScreen('createRoom');
@@ -331,7 +304,6 @@
             listenToRoomList();
         };
 
-        // UI Tạo Phòng
         document.getElementById('crPrivacy').onchange = (e) => {
             document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public');
         };
@@ -341,7 +313,7 @@
             showScreen('mainMenu');
         };
 
-        // ================= XỬ LÝ: TẠO PHÒNG =================
+        // --- TẠO PHÒNG ---
         document.getElementById('btnCreateRoomSubmit').onclick = async () => {
             const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
             let maxP = parseInt(document.getElementById('crMaxPlayers').value);
@@ -350,29 +322,20 @@
             const pass = document.getElementById('crPassword').value.trim();
 
             if (isPrivate && pass === "") return alert("Vui lòng nhập mật khẩu cho phòng riêng tư!");
-
-            // Random Room ID 6 ký tự
             const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
             const myColor = Math.floor(Math.random()*16777215);
             
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
-                    roomName: name,
-                    maxPlayers: maxP,
-                    isPrivate: isPrivate,
-                    password: pass,
-                    status: 'LOBBY', 
-                    hostId: myId,
+                    roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
                     gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], round: 1 },
                     players: { [myId]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
-            } catch (error) {
-                alert("Lỗi khi tạo phòng: " + error.message);
-            }
+            } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
         };
 
-        // ================= XỬ LÝ: DANH SÁCH PHÒNG =================
+        // --- DANH SÁCH PHÒNG ---
         let unsubscribeRoomList = null;
         function listenToRoomList() {
             const roomListUI = document.getElementById('roomListUI');
@@ -380,16 +343,11 @@
 
             unsubscribeRoomList = onSnapshot(collection(db, "rooms"), (snapshot) => {
                 roomListUI.innerHTML = '';
-                if (snapshot.empty) {
-                    roomListUI.innerHTML = '<div style="text-align:center; color:#888;">Chưa có phòng nào được tạo.</div>';
-                    return;
-                }
+                if (snapshot.empty) return roomListUI.innerHTML = '<div style="text-align:center; color:#888;">Chưa có phòng nào được tạo.</div>';
 
                 snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const rId = docSnap.id;
+                    const data = docSnap.data(); const rId = docSnap.id;
                     const pCount = data.players ? Object.keys(data.players).length : 0;
-                    
                     const isPlaying = data.status !== 'LOBBY';
                     const statusText = isPlaying ? `<span style="color:#ff3333;">Đang chơi</span>` : `<span style="color:#00ff00;">Phòng chờ</span>`;
                     const lockIcon = data.isPrivate ? '🔒 ' : '🔓 ';
@@ -399,22 +357,11 @@
                     row.innerHTML = `
                         <div class="room-info">
                             <div class="room-name">${lockIcon}${data.roomName} (ID: ${rId})</div>
-                            <div class="room-details">
-                                <span>Người chơi: ${pCount}/${data.maxPlayers}</span>
-                                <span>Trạng thái: ${statusText}</span>
-                            </div>
+                            <div class="room-details"><span>Người chơi: ${pCount}/${data.maxPlayers}</span><span>Trạng thái: ${statusText}</span></div>
                         </div>
-                        <button class="btn btn-join" ${isPlaying || pCount >= data.maxPlayers ? 'disabled style="background:#555;"' : ''}>
-                            VÀO PHÒNG
-                        </button>
+                        <button class="btn btn-join" ${isPlaying || pCount >= data.maxPlayers ? 'disabled style="background:#555;"' : ''}>VÀO PHÒNG</button>
                     `;
-
-                    // Gắn sự kiện click
-                    const joinBtn = row.querySelector('.btn-join');
-                    if (!isPlaying && pCount < data.maxPlayers) {
-                        joinBtn.onclick = () => attemptJoinRoom(rId, data);
-                    }
-
+                    if (!isPlaying && pCount < data.maxPlayers) row.querySelector('.btn-join').onclick = () => attemptJoinRoom(rId, data);
                     roomListUI.appendChild(row);
                 });
             });
@@ -423,53 +370,36 @@
         async function attemptJoinRoom(rId, roomData) {
             if (roomData.isPrivate) {
                 const inputPass = prompt("Phòng này là phòng riêng tư. Nhập mật khẩu:");
-                if (inputPass === null) return; // Bấm Hủy
+                if (inputPass === null) return;
                 if (inputPass !== roomData.password) return alert("Mật khẩu không chính xác!");
             }
-
-            // Tiến hành Join
             const myColor = Math.floor(Math.random()*16777215);
             try {
-                await updateDoc(doc(db, "rooms", rId), {
-                    [`players.${myId}`]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 }
-                });
+                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 } });
                 if(unsubscribeRoomList) unsubscribeRoomList();
                 enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
-            } catch (error) {
-                alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy.");
-            }
+            } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
         }
 
-        // ================= VÀO LOBBY VÀ LẮNG NGHE ĐỒNG BỘ =================
-        let unsubscribeRoom = null;
-        let unsubscribeChat = null;
+        // --- LOBBY VÀ GAME LOGIC ---
+        let unsubscribeRoom = null; let unsubscribeChat = null;
 
         function enterLobby(rId, rName, amIHost, maxP) {
-            currentRoomId = rId;
-            isHost = amIHost;
-            roomMaxPlayers = maxP;
-            
+            currentRoomId = rId; isHost = amIHost;
             myPlayer.score = 0; myPlayer.isAlive = true;
-
             document.getElementById('lobbyTitle').innerText = rName;
             document.getElementById('lobbyRoomDisplay').innerText = `ID PHÒNG: ${rId}`;
             showScreen('lobby');
-
-            if (isHost) document.getElementById('btnStartGame').style.display = 'block';
-            else document.getElementById('btnStartGame').style.display = 'none';
-
-            // Bắt đầu lắng nghe
-            listenToCurrentRoom();
-            listenToChat();
+            document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
+            listenToCurrentRoom(); listenToChat();
             sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã tham gia.`);
         }
 
         function listenToCurrentRoom() {
             unsubscribeRoom = onSnapshot(doc(db, "rooms", currentRoomId), (docSnap) => {
-                if (!docSnap.exists()) return forceLeaveRoom("Phòng đã bị chủ phòng đóng!");
+                if (!docSnap.exists()) return forceLeaveRoom("Phòng đã bị xóa hoặc kết thúc!");
                 const data = docSnap.data();
                 
-                // Đồng bộ Host
                 if (data.hostId === myId) { 
                     isHost = true; 
                     document.getElementById('btnStartGame').style.display = 'block';
@@ -481,52 +411,34 @@
                 }
                 
                 players = data.players || {};
-                const pCount = Object.keys(players).length;
-                document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${pCount}/${data.maxPlayers})`;
+                document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${Object.keys(players).length}/${data.maxPlayers})`;
                 
-                updateLobbyUI();
-                sync3DPlayers();
+                updateLobbyUI(); sync3DPlayers();
 
-                // Chuyển Trạng thái Game
                 if (data.status === 'PLAYING' && !gameActive) startGameClient(data.roomName);
                 else if (data.status === 'LOBBY' && gameActive) stopGameClient();
-                else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) {
-                    // Host bấm quay lại sảnh từ GameOver
-                    stopGameClient();
-                }
+                else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) stopGameClient();
                 else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
-                // Cập nhật State Logic in-game
                 if (data.status === 'PLAYING' && data.gameState) {
-                    const state = data.gameState;
-                    let oldPhase = serverPhase;
-                    
-                    serverPhase = state.phase;
-                    serverTargetLetter = state.targetLetter || '?';
-                    serverSafeTiles = state.safeTiles || [];
-                    serverRound = state.round || 1;
+                    const state = data.gameState; let oldPhase = serverPhase;
+                    serverPhase = state.phase; serverTargetLetter = state.targetLetter || '?';
+                    serverSafeTiles = state.safeTiles || []; serverRound = state.round || 1;
 
-                    // Tính điểm K/D
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
-                        myPlayer.score += 10;
-                        uploadMyPosition(); 
+                        myPlayer.score += 10; uploadMyPosition(); 
                     }
                 }
             });
         }
 
-        // ================= HỆ THỐNG CHAT =================
         function listenToChat() {
             const q = query(collection(db, "rooms", currentRoomId, "chat"), orderBy("time", "desc"), limit(20));
             unsubscribeChat = onSnapshot(q, (snap) => {
-                let msgs = [];
-                snap.forEach(doc => msgs.push(doc.data()));
-                msgs.reverse();
-                
+                let msgs = []; snap.forEach(doc => msgs.push(doc.data())); msgs.reverse();
                 let htmlStr = msgs.map(m => m.sys ? `<div class="chat-msg chat-sys">${m.text}</div>` : `<div class="chat-msg"><b>${m.sender}:</b> ${m.text}</div>`).join('');
                 document.getElementById('lobbyChatMessages').innerHTML = htmlStr;
                 document.getElementById('inGameChatMessages').innerHTML = htmlStr;
-                
                 document.getElementById('lobbyChatMessages').scrollTop = document.getElementById('lobbyChatMessages').scrollHeight;
                 document.getElementById('inGameChatMessages').scrollTop = document.getElementById('inGameChatMessages').scrollHeight;
             });
@@ -534,9 +446,7 @@
 
         async function sendMessage(text, isSys = false) {
             if (!text.trim() || !currentRoomId) return;
-            await addDoc(collection(db, "rooms", currentRoomId, "chat"), {
-                text: text, sender: isSys ? "Hệ thống" : myId.substring(0,4), time: Date.now(), sys: isSys
-            });
+            await addDoc(collection(db, "rooms", currentRoomId, "chat"), { text: text, sender: isSys ? "Hệ thống" : myId.substring(0,4), time: Date.now(), sys: isSys });
         }
         const sendSystemMessage = (t) => sendMessage(t, true);
 
@@ -556,7 +466,7 @@
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
         });
 
-        // ================= LOGIC HOST (SERVER-SIDE) =================
+        // --- HOST LOGIC ---
         document.getElementById('btnStartGame').onclick = async () => {
             await updateDoc(doc(db, "rooms", currentRoomId), { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 });
             startHostLoop(); 
@@ -586,8 +496,7 @@
                     let safeArr = [];
                     for(let i=0; i<safeCount; i++) {
                         let rIdx = Math.floor(Math.random() * allIndices.length);
-                        safeArr.push(allIndices[rIdx]);
-                        allIndices.splice(rIdx, 1);
+                        safeArr.push(allIndices[rIdx]); allIndices.splice(rIdx, 1);
                     }
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.safeTiles": safeArr });
                 }
@@ -610,13 +519,12 @@
             }, 1000);
         }
 
-        // ================= CLIENT XỬ LÝ HÌNH ẢNH & THOÁT =================
+        // --- CLIENT UI VÀ SCOREBOARD CHI TIẾT ---
         function startGameClient(roomName) {
-            showScreen(''); // Ẩn hết UI HTML
+            showScreen('');
             document.getElementById('gameUI').style.display = 'block';
             document.getElementById('roomCodeDisplay').innerText = `Phòng: ${roomName}`;
-            gameActive = true;
-            document.getElementById('statusText').style.display = 'none';
+            gameActive = true; document.getElementById('statusText').style.display = 'none';
 
             myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
             myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
@@ -626,16 +534,15 @@
         }
 
         function stopGameClient() {
-            gameActive = false;
-            document.getElementById('gameUI').style.display = 'none';
+            gameActive = false; document.getElementById('gameUI').style.display = 'none';
             if (hostGameLoop) clearInterval(hostGameLoop);
-            showScreen('lobby'); // Quay lại sảnh
+            showScreen('lobby'); 
         }
 
+        // Logic Xoá phòng tự động nếu rời hết
         async function forceLeaveRoom(reason = "") {
             if(reason) alert(reason);
-            gameActive = false;
-            document.getElementById('gameUI').style.display = 'none';
+            gameActive = false; document.getElementById('gameUI').style.display = 'none';
             if (hostGameLoop) clearInterval(hostGameLoop);
             
             showScreen('mainMenu');
@@ -645,13 +552,12 @@
             if (currentRoomId) {
                 sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã thoát.`);
                 const pCount = Object.keys(players).length;
-                if (pCount <= 1 && isHost) {
-                    // Nếu là người cuối cùng, xóa phòng
+                
+                // NẾU LÀ NGƯỜI CUỐI CÙNG HOẶC DUY NHẤT -> XOÁ PHÒNG NGAY LẬP TỨC
+                if (pCount <= 1) {
                     await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
                 } else {
-                    // Xóa bản thân khỏi danh sách
                     await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
-                    // Nếu là Host, random người khác làm host
                     if (isHost) {
                         const remainingIds = Object.keys(players).filter(id => id !== myId);
                         if (remainingIds.length > 0) {
@@ -663,45 +569,47 @@
             currentRoomId = null; isHost = false;
         }
 
+        // Tự động xoá nếu đóng tab
+        window.addEventListener('beforeunload', () => {
+            if (currentRoomId) {
+                if (Object.keys(players).length <= 1) deleteDoc(doc(db, "rooms", currentRoomId));
+                else updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() });
+            }
+        });
+
         document.getElementById('btnExitLobby').onclick = () => forceLeaveRoom();
         document.getElementById('btnLeave').onclick = () => forceLeaveRoom();
-        
-        document.getElementById('btnReturnLobby').onclick = async () => {
-            if (isHost) await updateDoc(doc(db, "rooms", currentRoomId), { status: 'LOBBY' });
-        };
+        document.getElementById('btnReturnLobby').onclick = async () => { if (isHost) await updateDoc(doc(db, "rooms", currentRoomId), { status: 'LOBBY' }); };
 
+        // HIỂN THỊ KẾT THÚC & SCOREBOARD
         function showGameOver() {
-            gameActive = false;
-            document.getElementById('gameUI').style.display = 'none';
+            gameActive = false; document.getElementById('gameUI').style.display = 'none';
             showScreen('gameOver');
 
             let arr = Object.keys(players).map(k => ({ id: k, ...players[k] }));
-            arr.sort((a,b) => b.score - a.score);
+            arr.sort((a,b) => b.score - a.score); // Xếp hạng theo Điểm tổng
             
-            let sbHTML = `<div class="score-row score-header"><span>Người Chơi</span><span>K/D</span><span>Điểm Tổng</span></div>`;
+            let sbHTML = `<div class="score-row score-header"><span>Người Chơi</span><span>K / D</span><span>Điểm Tổng</span></div>`;
             arr.forEach((p, idx) => {
+                let statusInfo = p.isAlive ? '(Sống)' : '(Đã ướt)';
+                let deathCount = p.isAlive ? 0 : 1;
+                
                 sbHTML += `<div class="score-row" style="color: #${p.color.toString(16).padStart(6,'0')}">
-                    <span>#${idx+1} ${p.id.substring(0,4)} ${p.isAlive ? '(Sống)' : ''}</span>
-                    <span>${p.kills}/${p.isAlive?0:1}</span>
+                    <span>#${idx+1} ${p.id.substring(0,4)} ${statusInfo}</span>
+                    <span>${p.kills} / ${deathCount}</span>
                     <span>${p.score}</span>
                 </div>`;
             });
             document.getElementById('scoreboard').innerHTML = sbHTML;
-            document.getElementById('winnerAnnouncement').innerText = (arr[0] && arr[0].isAlive) ? `NGƯỜI SỐNG SÓT: ${arr[0].id.substring(0,4)}` : "KHÔNG CÒN AI SỐNG SÓT";
+            document.getElementById('winnerAnnouncement').innerText = (arr[0] && arr[0].isAlive) ? `NGƯỜI CHIẾN THẮNG: ${arr[0].id.substring(0,4)}` : "TẤT CẢ ĐỀU ĐÃ ƯỚT";
         }
 
         function updateLobbyUI() {
-            const listUI = document.getElementById('playerListUI');
-            listUI.innerHTML = '';
+            const listUI = document.getElementById('playerListUI'); listUI.innerHTML = '';
             for (let uid in players) {
-                const p = players[uid];
-                const hexColor = '#' + p.color.toString(16).padStart(6, '0');
-                const hostTag = p.isHost ? ' 👑(Chủ)' : '';
-                const meTag = uid === myId ? ' (Bạn)' : '';
-                listUI.innerHTML += `<li class="player-item">
-                    <div class="player-color" style="background: ${hexColor}"></div>
-                    <div>${uid.substring(0,6)}${meTag}${hostTag}</div>
-                </li>`;
+                const p = players[uid]; const hexColor = '#' + p.color.toString(16).padStart(6, '0');
+                const hostTag = p.isHost ? ' 👑(Chủ)' : ''; const meTag = uid === myId ? ' (Bạn)' : '';
+                listUI.innerHTML += `<li class="player-item"><div class="player-color" style="background: ${hexColor}"></div><div>${uid.substring(0,6)}${meTag}${hostTag}</div></li>`;
             }
         }
 
@@ -711,11 +619,8 @@
                 if (id === myId) continue;
                 const pData = players[id];
                 if (!playerMeshes[id]) {
-                    const geo = new THREE.BoxGeometry(1, 1, 1);
-                    const mat = new THREE.MeshStandardMaterial({ color: pData.color });
-                    const mesh = new THREE.Mesh(geo, mat);
-                    mesh.castShadow = true; scene.add(mesh);
-                    playerMeshes[id] = mesh;
+                    playerMeshes[id] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: pData.color }));
+                    playerMeshes[id].castShadow = true; scene.add(playerMeshes[id]);
                 }
                 playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.1);
                 playerMeshes[id].position.z = THREE.MathUtils.lerp(playerMeshes[id].position.z, pData.z, 0.1);
@@ -723,7 +628,7 @@
             }
         }
 
-        // ================= RENDER LOOP (THREE.JS) =================
+        // --- LOOP 3D ---
         let frameCount = 0;
         function animate() {
             requestAnimationFrame(animate);
@@ -762,38 +667,47 @@
                     tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
                 });
 
+                // XỬ LÝ DI CHUYỂN (WSAD ĐÃ FIX NGƯỢC CHIỀU) VÀ PHẢI CÒN SỐNG MỚI ĐƯỢC CHẠY
                 if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
-                    if (keys.w) myPlayer.x -= moveSpeed;
-                    if (keys.s) myPlayer.x += moveSpeed;
-                    if (keys.a) myPlayer.z -= moveSpeed;
-                    if (keys.d) myPlayer.z += moveSpeed;
+                    if (keys.w) myPlayer.z -= moveSpeed;
+                    if (keys.s) myPlayer.z += moveSpeed;
+                    if (keys.a) myPlayer.x -= moveSpeed;
+                    if (keys.d) myPlayer.x += moveSpeed;
 
                     const bound = (gridSize * tileSize) / 2 - 0.5;
                     myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
                     myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
 
-                    checkDeath(); uploadMyPosition();
+                    checkDeath(); 
+                    uploadMyPosition();
                 }
 
                 if (!playerMeshes[myId]) {
                     playerMeshes[myId] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: myPlayer.color }));
                     playerMeshes[myId].castShadow = true; scene.add(playerMeshes[myId]);
                 }
+                
                 playerMeshes[myId].position.x = myPlayer.x;
                 playerMeshes[myId].position.z = myPlayer.z;
                 
+                // QUẢN LÝ CAMERA (SPECTATOR MODE KHI CHẾT)
                 if (myPlayer.isAlive) {
                     playerMeshes[myId].position.y = 0.5;
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
+                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.05);
                 } else {
-                    playerMeshes[myId].position.y = -2; 
-                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 40, 0.02); 
+                    playerMeshes[myId].position.y = -2; // Xác rơi xuống hố
+                    // Khán giả: Camera bay ra giữa và zoom out nhìn toàn cảnh
+                    camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, 0.02);
+                    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, 0.02);
+                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, 0.02); 
                 }
             }
             renderer.render(scene, camera);
         }
 
+        // XỬ LÝ CHẾT
         function checkDeath() {
             if (!myPlayer.isAlive) return;
             let closestTile = null; let minDist = Infinity;
@@ -801,17 +715,26 @@
                 const dist = new THREE.Vector3(myPlayer.x, 0.5, myPlayer.z).distanceTo(new THREE.Vector3(tile.position.x, 0.5, tile.position.z));
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
+            
+            // Nếu phát hiện đứng trên ô đang rơi
             if (closestTile && closestTile.position.y < -1) {
-                myPlayer.isAlive = false;
+                myPlayer.isAlive = false; 
+                
+                // Hiển thị "BẠN ĐÃ ƯỚT" trong 1 giây
                 const st = document.getElementById('statusText');
-                st.style.display = 'block'; setTimeout(() => { st.style.display = 'none'; }, 1000);
+                st.innerText = "BẠN ĐÃ ƯỚT";
+                st.style.display = 'block'; 
+                setTimeout(() => { st.style.display = 'none'; }, 1000);
+
+                // Ép update lên máy chủ ngay lập tức để chốt trạng thái chết
+                uploadMyPosition();
             }
         }
 
         let lastUpdate = 0;
         async function uploadMyPosition() {
             let now = Date.now();
-            if (now - lastUpdate > 100) { 
+            if (now - lastUpdate > 100 || !myPlayer.isAlive) { 
                 lastUpdate = now;
                 await updateDoc(doc(db, "rooms", currentRoomId), {
                     [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
