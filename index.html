@@ -93,19 +93,18 @@
         <div class="subtitle">ĐANG KẾT NỐI MÁY CHỦ...</div>
     </div>
 
-    <!-- MAIN MENU MỚI -->
+    <!-- MAIN MENU -->
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
-        
         <div class="form-group" style="margin-bottom: 30px;">
             <input type="text" id="myPlayerName" placeholder="TÊN (VD: safierro)..." maxlength="12">
         </div>
-
         <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
         <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
     </div>
 
+    <!-- TẠO PHÒNG -->
     <div id="createRoomScreen" class="screen hidden">
         <h1>TẠO PHÒNG</h1>
         <div class="form-group">
@@ -131,12 +130,14 @@
         <button class="btn btn-secondary" id="btnBackFromCreate">QUAY LẠI</button>
     </div>
 
+    <!-- DANH SÁCH PHÒNG -->
     <div id="joinRoomScreen" class="screen hidden">
         <h1>DANH SÁCH PHÒNG</h1>
         <div class="room-browser" id="roomListUI"></div>
         <button class="btn btn-secondary" id="btnBackFromJoin">QUAY LẠI</button>
     </div>
 
+    <!-- SẢNH CHỜ -->
     <div id="lobbyScreen" class="screen hidden">
         <h1 id="lobbyTitle">SẢNH CHỜ</h1>
         <div class="subtitle" id="lobbyRoomDisplay">PHÒNG: ĐANG TẢI...</div>
@@ -158,6 +159,7 @@
         </div>
     </div>
 
+    <!-- KẾT THÚC (SCOREBOARD) -->
     <div id="gameOverScreen" class="screen hidden">
         <h1 style="font-size: 80px;">KẾT THÚC</h1>
         <div class="subtitle" id="winnerAnnouncement">Chờ thống kê...</div>
@@ -166,6 +168,7 @@
         <div class="subtitle" id="waitingHostText" style="margin-top: 20px;">Đang chờ chủ phòng...</div>
     </div>
 
+    <!-- UI GAME -->
     <div id="gameUI">
         <div class="top-bar">
             <div id="roomCodeDisplay">Phòng: ???</div>
@@ -184,6 +187,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+        // CẤU HÌNH FIREBASE CỦA BẠN
         const myFirebaseConfig = {
             apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
             authDomain: "machine-fight.firebaseapp.com",
@@ -198,6 +202,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // --- CÁC BIẾN TOÀN CỤC ---
         let myId = null;
         let myName = "Player";
         let currentRoomId = null;
@@ -210,6 +215,7 @@
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
         let serverDangerLetters = {}; 
+        let serverHoles = []; // CƠ CHẾ MỚI: Mảng lưu vị trí hố mặc định của từng vòng
         let serverRound = 1;
 
         let myPlayer = { name: "Player", x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
@@ -233,7 +239,7 @@
             if(screens[screenName]) screens[screenName].classList.remove('hidden');
         }
 
-        // --- TẠO MÔI TRƯỜNG 3D ---
+        // --- KHỞI TẠO ĐỒ HỌA THREE.JS ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a0a);
         scene.fog = new THREE.Fog(0x0a0a0a, 15, 60);
@@ -292,17 +298,17 @@
             for (let z = 0; z < gridSize; z++) {
                 const mesh = new THREE.Mesh(tileGeo, matBlank);
                 mesh.position.set((x - Math.floor(gridSize/2)) * tileSize, -0.25, (z - Math.floor(gridSize/2)) * tileSize);
-                mesh.receiveShadow = true; mesh.userData = { targetY: -0.25, isDanger: false };
+                mesh.receiveShadow = true; 
+                mesh.userData = { targetY: -0.25, isDanger: false, index: tiles.length }; // Lưu index để dễ đối chiếu mảng
                 floorGroup.add(mesh); tiles.push(mesh);
             }
         }
         scene.add(floorGroup);
         const playerMeshes = {};
 
-        // --- ĐĂNG NHẬP FIREBASE & UI ---
+        // --- AUTH VÀ ĐIỀU HƯỚNG ---
         signInAnonymously(auth).then((userCred) => {
             myId = userCred.user.uid;
-            // Không gán value để giữ Text Placeholder "VD: safierro" hiển thị đẹp mắt
             showScreen('mainMenu');
         }).catch(err => alert("Lỗi kết nối máy chủ: " + err.message));
 
@@ -313,14 +319,13 @@
         };
         document.getElementById('navJoinRoom').onclick = () => { 
             myName = document.getElementById('myPlayerName').value.trim() || "Người Chơi";
-            showScreen('joinRoom'); 
-            listenToRoomList(); 
+            showScreen('joinRoom'); listenToRoomList(); 
         };
         document.getElementById('crPrivacy').onchange = (e) => { document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public'); };
         document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
         document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
-        // --- TẠO PHÒNG ---
+        // --- XỬ LÝ: TẠO PHÒNG VÀ VÀO PHÒNG ---
         document.getElementById('btnCreateRoomSubmit').onclick = async () => {
             const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
             let maxP = parseInt(document.getElementById('crMaxPlayers').value);
@@ -335,14 +340,13 @@
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
-                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, round: 1 },
+                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, holes: [], round: 1 },
                     players: { [myId]: { name: myName, x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
             } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
         };
 
-        // --- DANH SÁCH PHÒNG ---
         let unsubscribeRoomList = null;
         function listenToRoomList() {
             const roomListUI = document.getElementById('roomListUI');
@@ -388,7 +392,7 @@
             } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
         }
 
-        // --- LOBBY VÀ GAME LOGIC ---
+        // --- ĐỒNG BỘ PHÒNG THỜI GIAN THỰC ---
         let unsubscribeRoom = null; let unsubscribeChat = null;
 
         function enterLobby(rId, rName, amIHost, maxP) {
@@ -426,13 +430,15 @@
                 else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) stopGameClient();
                 else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
-                // ĐỒNG BỘ TRẠNG THÁI VÁN ĐẤU
+                // LẮNG NGHE STATE GAME
                 if (data.status === 'PLAYING' && data.gameState) {
                     const state = data.gameState; let oldPhase = serverPhase;
+                    
                     serverPhase = state.phase; 
                     serverTargetLetter = state.targetLetter || '?';
                     serverSafeTiles = state.safeTiles || []; 
                     serverDangerLetters = state.dangerLetters || {}; 
+                    serverHoles = state.holes || []; // Đồng bộ danh sách hố mặc định
                     serverRound = state.round || 1;
 
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
@@ -476,9 +482,9 @@
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
         });
 
-        // --- HOST LOGIC (SỬA LỖI ĐỒNG BỘ GAMEOVER & SỤT LÚN TĂNG DẦN) ---
+        // --- MÁY CHỦ (HOST LOGIC) PHÂN TÁCH 2 CƠ CHẾ ---
         document.getElementById('btnStartGame').onclick = async () => {
-            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 };
+            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1, "gameState.holes": [] };
             for (let p in players) {
                 updates[`players.${p}.isAlive`] = true;
                 updates[`players.${p}.score`] = 0; 
@@ -494,14 +500,14 @@
             hostGameLoop = setInterval(async () => {
                 if (!gameActive || !isHost) return clearInterval(hostGameLoop);
 
-                // KIỂM TRA LIÊN TỤC: ĐÃ CHẾT HẾT CHƯA?
+                // KIỂM TRA ĐIỀU KIỆN KẾT THÚC GAME LIÊN TỤC MỖI GIÂY
                 let aliveCount = Object.values(players).filter(p => p.isAlive).length;
                 let totalPlayers = Object.keys(players).length;
 
                 if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
                     clearInterval(hostGameLoop);
                     await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
-                    return; // Chết hết thì dừng loop ngay lập tức
+                    return; 
                 }
 
                 phaseTime++;
@@ -514,24 +520,24 @@
                     serverPhase = 'LOCKED'; phaseTime = 0;
                     let target = lettersList[Math.floor(Math.random()*lettersList.length)];
                     
-                    // Lôgic: Vòng 1 = 2 ô, Vòng 2 = 6 ô, Vòng 3 = 10 ô... (Cộng thêm 4 mỗi vòng)
-                    let dangerCount = 2 + (serverRound - 1) * 4;
-                    if (dangerCount >= 81) dangerCount = 80; // Giới hạn để luôn còn 1 ô an toàn
+                    // Cơ chế 2: Cân bằng số lượng chữ an toàn trên phần Gạch còn lại
+                    let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
                     
-                    let allIndices = Array.from({length: 81}, (_, i) => i);
-                    let dangerArr = [];
-                    for(let i=0; i<dangerCount; i++) {
-                        let rIdx = Math.floor(Math.random() * allIndices.length);
-                        dangerArr.push(allIndices[rIdx]); 
-                        allIndices.splice(rIdx, 1);
+                    // Tính 40% diện tích sàn hiện tại làm ô an toàn
+                    let safeCount = Math.floor(activeTiles.length * 0.4);
+                    safeCount = Math.max(2, safeCount); // Đảm bảo luôn có ít nhất 2 ô sống sót
+                    
+                    let safeArr = [];
+                    for(let i=0; i<safeCount; i++) {
+                        if(activeTiles.length === 0) break;
+                        let rIdx = Math.floor(Math.random() * activeTiles.length);
+                        safeArr.push(activeTiles[rIdx]); 
+                        activeTiles.splice(rIdx, 1);
                     }
                     
-                    // Số còn lại là Safe
-                    let safeArr = allIndices;
-
-                    // Gắn tĩnh chữ sai (Chỉ gán chữ sai cho các ô sụp đổ)
+                    // Gắn tĩnh chữ sai cho các ô sụp đổ
                     let dLetters = {};
-                    dangerArr.forEach(idx => {
+                    activeTiles.forEach(idx => { // Các ô còn lại không được chọn an toàn chính là ô Danger
                         let wLetters = lettersList.filter(l => l !== target);
                         dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
                     });
@@ -546,11 +552,25 @@
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase });
                 }
                 else if (serverPhase === 'DROP' && phaseTime >= 3) {
-                    // Không cần kiểm tra chết hết ở đây nữa vì đã kiểm tra ở trên cùng
-                    serverPhase = 'IDLE'; phaseTime = 0; serverRound++;
+                    // CHUẨN BỊ VÒNG MỚI & CƠ CHẾ 1: TẠO HỐ MẶC ĐỊNH CHO VÒNG SAU
+                    serverRound++;
+                    
+                    let holeCount = (serverRound - 1) * 4; // Vòng 1:0, V2:4, V3:8, V4:12...
+                    if (holeCount > 75) holeCount = 75; // Giữ lại ít nhất vài ô cuối cùng để chơi
+                    
+                    let allIndices = Array.from({length: 81}, (_, i) => i);
+                    let newHoles = [];
+                    for(let i=0; i < holeCount; i++) {
+                        let rIdx = Math.floor(Math.random() * allIndices.length);
+                        newHoles.push(allIndices[rIdx]);
+                        allIndices.splice(rIdx, 1);
+                    }
+
+                    serverPhase = 'IDLE'; phaseTime = 0;
                     await updateDoc(doc(db, "rooms", currentRoomId), { 
                         "gameState.phase": serverPhase, 
-                        "gameState.round": serverRound
+                        "gameState.round": serverRound,
+                        "gameState.holes": newHoles
                     });
                 }
             }, 1000);
@@ -658,7 +678,7 @@
             }
         }
 
-        // --- LOOP 3D ---
+        // --- CẬP NHẬT RENDER LOOP THEO CƠ CHẾ HỐ MỚI ---
         let frameCount = 0;
         function animate() {
             requestAnimationFrame(animate);
@@ -676,33 +696,41 @@
                 else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
 
                 tiles.forEach((tile, index) => {
-                    if (serverPhase === 'IDLE') {
-                        tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
+                    // Ưu tiên 1: Các Hố Trống Mặc Định (Cơ chế 1)
+                    if (serverHoles.includes(index)) {
+                        tile.userData.targetY = -2.5; 
+                        tile.material = matBlank;
                     } 
-                    else if (serverPhase === 'ROLLING') {
-                        tile.userData.targetY = -0.25; tile.userData.isDanger = false;
-                        if (frameCount % 20 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
-                    }
-                    else if (serverPhase === 'LOCKED') {
-                        tile.userData.targetY = -0.25;
-                        if (serverSafeTiles.includes(index)) {
-                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
-                        } else {
-                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
+                    else {
+                        // Ưu tiên 2: Gameplay Bảng Chữ Cái trên Sàn Còn Lại (Cơ chế 2)
+                        if (serverPhase === 'IDLE') {
+                            tile.userData.targetY = -0.25; tile.material = matBlank; 
+                        } 
+                        else if (serverPhase === 'ROLLING') {
+                            tile.userData.targetY = -0.25; 
+                            if (frameCount % 20 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
                         }
-                    }
-                    else if (serverPhase === 'DROP') {
-                        if (serverSafeTiles.includes(index)) {
-                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
-                        } else {
-                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
-                            tile.userData.targetY = -2.5; 
+                        else if (serverPhase === 'LOCKED') {
+                            tile.userData.targetY = -0.25;
+                            if (serverSafeTiles.includes(index)) {
+                                tile.material = matsSafe[serverTargetLetter]; 
+                            } else {
+                                let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                                tile.material = matsDanger[dl]; 
+                            }
+                        }
+                        else if (serverPhase === 'DROP') {
+                            if (serverSafeTiles.includes(index)) {
+                                tile.material = matsSafe[serverTargetLetter]; 
+                            } else {
+                                let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                                tile.material = matsDanger[dl]; 
+                                tile.userData.targetY = -2.5; // Các chữ sai sập xuống
+                            }
                         }
                     }
                     
-                    // Lên xuống mượt mà
+                    // Di chuyển mượt mà lên xuống
                     tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
                 });
 
@@ -743,15 +771,17 @@
         }
 
         function checkDeath() {
-            if (!myPlayer.isAlive || serverPhase !== 'DROP') return; 
+            if (!myPlayer.isAlive) return; 
             
             let closestTile = null; let minDist = Infinity;
-            tiles.forEach(tile => {
+            tiles.forEach((tile) => {
                 const dist = new THREE.Vector3(myPlayer.x, 0.5, myPlayer.z).distanceTo(new THREE.Vector3(tile.position.x, 0.5, tile.position.z));
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
             
-            if (closestTile && closestTile.position.y < -1.5) {
+            // THUẬT TOÁN FIX LỖI: Chỉ chết khi đứng trên ô CÓ MỤC TIÊU sập sâu (-2.5) VÀ đang trực tiếp rơi xuống (-1.5)
+            // Giúp ngăn ngừa lỗi bị chết khi các ô đang từ đáy vực trồi lên ở đầu mỗi vòng.
+            if (closestTile && closestTile.userData.targetY === -2.5 && closestTile.position.y < -1.5) {
                 myPlayer.isAlive = false; 
                 const st = document.getElementById('statusText');
                 st.innerText = "BẠN ĐÃ ƯỚT"; st.style.display = 'block'; 
