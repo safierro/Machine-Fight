@@ -4,59 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Machine Party - Đấu Trường Sinh Tử</title>
+    
     <style>
+        /* =========================================
+           PHẦN 1: STYLE (Giao diện CSS) 
+           ========================================= */
         body {
             margin: 0; overflow: hidden; background-color: #050505; color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none; -webkit-user-select: none;
         }
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 10;
-            display: flex; flex-direction: column; justify-content: space-between;
-            padding: 20px; box-sizing: border-box;
-        }
-        .header { text-align: center; text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); }
-        h1 { margin: 0; font-size: 36px; text-transform: uppercase; letter-spacing: 4px; color: #ff3333; font-weight: 900; }
-        #status-message { font-size: 18px; color: #e0e0e0; margin-top: 5px; font-weight: bold; transition: color 0.3s; }
-        
-        /* GIAO DIỆN MENU MỚI */
-        #main-menu {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 15, 15, 0.9); backdrop-filter: blur(8px);
-            display: flex; justify-content: space-between; padding: 50px; box-sizing: border-box;
-            z-index: 20; pointer-events: auto; transition: opacity 0.5s;
-        }
-        .menu-left {
-            flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
-            padding-right: 40px;
-        }
-        .menu-left h2 { font-size: 56px; color: #ff3333; text-transform: uppercase; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,0,0,0.5); }
-        .room-info { font-size: 24px; color: #00aaff; margin-bottom: 40px; font-weight: bold; }
-        
-        .menu-right {
-            width: 400px; display: flex; flex-direction: column; gap: 20px;
-        }
-        .panel {
-            background: rgba(30, 30, 30, 0.8); border: 2px solid #444; border-radius: 10px;
-            padding: 20px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        .player-panel { flex: 1; min-height: 200px; }
-        .chat-panel { flex: 1.5; min-height: 250px; }
-        .panel h3 { margin: 0 0 15px 0; color: #00aaff; font-size: 20px; border-bottom: 2px solid #555; padding-bottom: 10px; text-transform: uppercase; }
-        
-        #player-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
-        #player-list li { padding: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px; border-radius: 6px; font-weight: bold; display: flex; justify-content: space-between;}
-        
-        #chat-list { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0 0 15px 0; font-size: 15px; display: flex; flex-direction: column; gap: 8px;}
-        .sys-msg { color: #888; font-style: italic; font-size: 13px; text-align: center; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;}
-        .chat-msg { background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; word-wrap: break-word;}
-        .chat-msg .name { font-weight: bold; margin-right: 5px; }
-        
-        .chat-input-area { display: flex; gap: 10px; }
-        #chat-input { flex: 1; padding: 12px; background: #111; border: 1px solid #555; color: white; border-radius: 6px; font-family: inherit; }
-        #chat-input:focus { outline: none; border-color: #00aaff; }
-        
+
+        /* Nút bấm chung */
         button {
             background: #ff3333; color: white; border: none;
             padding: 15px 30px; font-size: 18px; cursor: pointer;
@@ -69,50 +28,128 @@
         
         .btn-blue { background: #00aaff; box-shadow: 0 4px 0 #0077cc; }
         .btn-blue:hover { background: #33bbff; box-shadow: 0 2px 0 #0077cc; }
-        .btn-send { padding: 12px 20px; width: auto; margin-bottom: 0; box-shadow: none; border-radius: 6px;}
-        .btn-send:hover { transform: none; box-shadow: none; }
+        .btn-gray { background: #555; box-shadow: 0 4px 0 #333; }
+        .btn-gray:hover { background: #666; box-shadow: 0 2px 0 #333; }
 
-        #death-screen {
+        /* Màn hình Trang Chủ (Welcome Screen) */
+        #welcome-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(200, 0, 0, 0.4); backdrop-filter: blur(4px);
-            display: none; justify-content: center; align-items: center; z-index: 40; pointer-events: none;
+            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100; padding: 20px; box-sizing: border-box; text-align: center;
         }
-        #death-screen h1 { font-size: 80px; color: white; text-shadow: 0 0 30px #ff0000; font-weight: 900; }
+        #welcome-screen h1 { font-size: 60px; color: #ff3333; text-shadow: 0 0 20px rgba(255,0,0,0.5); margin-bottom: 50px; letter-spacing: 5px; text-transform: uppercase;}
+        .welcome-actions { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+
+        /* Màn hình Sảnh Chờ (Lobby Screen) */
+        #lobby-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 15, 15, 0.95); backdrop-filter: blur(10px);
+            display: none; justify-content: space-between; padding: 50px; box-sizing: border-box;
+            z-index: 90;
+        }
+        .lobby-left { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-right: 40px; }
+        .lobby-left h2 { font-size: 45px; color: #ff3333; margin-bottom: 10px; text-shadow: 0 0 15px rgba(255,0,0,0.5); }
+        .room-info { font-size: 28px; color: #00aaff; margin-bottom: 40px; font-weight: bold; }
+        .lobby-right { width: 450px; display: flex; flex-direction: column; gap: 20px; }
+        .panel { background: rgba(30, 30, 30, 0.8); border: 2px solid #444; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .player-panel { flex: 1; min-height: 200px; }
+        .chat-panel { flex: 1.5; min-height: 250px; }
+        .panel h3 { margin: 0 0 15px 0; color: #00aaff; font-size: 20px; border-bottom: 2px solid #555; padding-bottom: 10px; text-transform: uppercase; }
         
-        #gameover-screen {
+        #player-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+        #player-list li { padding: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px; border-radius: 6px; font-weight: bold; display: flex; justify-content: space-between;}
+        #chat-list { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0 0 15px 0; font-size: 15px; display: flex; flex-direction: column; gap: 8px;}
+        .chat-msg { background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; word-wrap: break-word;}
+        .chat-input-area { display: flex; gap: 10px; }
+        #chat-input { flex: 1; padding: 12px; background: #111; border: 1px solid #555; color: white; border-radius: 6px; outline: none;}
+        #chat-input:focus { border-color: #00aaff; }
+        
+        /* Giao diện Trong Game (HUD) */
+        #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none; justify-content: center; align-items: center; z-index: 50; pointer-events: none;
+            pointer-events: none; z-index: 10; display: none; flex-direction: column; justify-content: space-between;
+            padding: 20px; box-sizing: border-box;
         }
-        #gameover-screen h1 { font-size: 100px; color: #ffaa00; text-shadow: 0 0 40px #ffaa00; font-weight: 900; letter-spacing: 10px;}
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .header { text-align: left; text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); }
+        .header h1 { margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; color: #ff3333; font-weight: 900; }
+        #status-message { font-size: 18px; color: #e0e0e0; margin-top: 5px; font-weight: bold; transition: color 0.3s; }
+        #btn-quit-game { width: auto; padding: 10px 20px; font-size: 14px; pointer-events: auto; background: #555; box-shadow: 0 4px 0 #333; margin: 0;}
+        #btn-quit-game:hover { background: #ff3333; box-shadow: 0 2px 0 #cc0000; }
 
-        #scoreboard-ui {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 10, 10, 0.9); backdrop-filter: blur(10px);
-            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60;
-        }
+        /* Các màn hình trạng thái game */
+        #death-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(200, 0, 0, 0.5); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 40; pointer-events: none; }
+        #death-screen h1 { font-size: 80px; color: white; text-shadow: 0 0 30px #ff0000; font-weight: 900; text-align: center; }
+        #gameover-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: none; justify-content: center; align-items: center; z-index: 50; pointer-events: none; }
+        #gameover-screen h1 { font-size: 100px; color: #ffaa00; text-shadow: 0 0 40px #ffaa00; font-weight: 900; letter-spacing: 10px; text-align: center;}
+
+        /* Bảng điểm */
+        #scoreboard-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 60; }
         .score-box { background: #1a1a1a; border: 2px solid #444; border-radius: 10px; padding: 30px; width: 600px; max-width: 90%; text-align: center;}
-        .score-box h2 { color: #00aaff; font-size: 36px; margin-top: 0; margin-bottom: 20px;}
         .score-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; color: white; font-size: 18px;}
         .score-table th { border-bottom: 2px solid #555; padding: 10px; color: #888; }
         .score-table td { padding: 12px 10px; border-bottom: 1px solid #333; font-weight: bold;}
-        .rank-1 { color: #ffd700; text-shadow: 0 0 10px #ffd700; font-size: 22px;}
 
-        #joystick-zone {
-            position: absolute; bottom: 20px; left: 20px;
-            width: 150px; height: 150px; pointer-events: auto;
-        }
+        /* Joystick & Modal */
+        #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: auto; }
         #mobile-hint { position: absolute; bottom: 20px; right: 20px; font-size: 14px; color: #888; text-align: right; }
+        .modal { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 110; justify-content: center; align-items: center; }
+        .modal-content { background: #222; padding: 30px; border-radius: 10px; border: 2px solid #555; text-align: center; width: 350px; }
     </style>
-    <!-- Three.js & NippleJS cho Mobile Joystick -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
 </head>
 <body>
+    <!-- =========================================
+         PHẦN 2: HTML (Cấu trúc giao diện)
+         ========================================= -->
+         
+    <!-- Màn hình 1: Trang chủ -->
+    <div id="welcome-screen">
+        <h1>MACHINE PARTY</h1>
+        <p id="global-status" style="color:#888; margin-bottom: 20px;">Đang khởi tạo...</p>
+        <div class="welcome-actions">
+            <button id="btn-create-room" class="btn-blue" disabled>TẠO PHÒNG MỚI</button>
+            <button id="btn-join-modal" class="btn-blue" disabled>VÀO PHÒNG BẠN BÈ</button>
+        </div>
+    </div>
+
+    <!-- Màn hình 2: Sảnh Chờ (Lobby) -->
+    <div id="lobby-screen">
+        <div class="lobby-left">
+            <h2>SẢNH CHỜ</h2>
+            <div class="room-info" id="room-display">PHÒNG: ĐANG TẢI...</div>
+            <div style="width: 100%; max-width: 400px;">
+                <button id="btn-start-game" style="display: none;">BẮT ĐẦU TRẬN ĐẤU</button>
+                <p id="waiting-msg" style="color: #888; font-size: 18px; margin-bottom: 15px;">Đang chờ chủ phòng bắt đầu...</p>
+                <button id="btn-leave-lobby" class="btn-gray">RỜI PHÒNG</button>
+            </div>
+        </div>
+        <div class="lobby-right">
+            <div class="panel player-panel">
+                <h3 id="player-count-title">NGƯỜI CHƠI (0/8)</h3>
+                <ul id="player-list"></ul>
+            </div>
+            <div class="panel chat-panel">
+                <h3>KÊNH CHAT</h3>
+                <ul id="chat-list"></ul>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." autocomplete="off">
+                    <button id="btn-send-chat" style="width:auto; margin:0; padding:12px 20px;">GỬI</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Màn hình 3: Trong Game (HUD) -->
     <div id="ui-layer">
-        <div class="header">
-            <h1>MACHINE PARTY</h1>
-            <div id="status-message">KẾT NỐI MÁY CHỦ...</div>
+        <div class="hud-top">
+            <div class="header">
+                <h1>MACHINE PARTY</h1>
+                <div id="status-message">CHUẨN BỊ...</div>
+            </div>
+            <button id="btn-quit-game">THOÁT PHÒNG</button>
         </div>
         <div id="mobile-hint">
             PC: Dùng W, A, S, D<br>
@@ -121,88 +158,43 @@
     </div>
     <div id="joystick-zone"></div>
     
-    <div id="death-screen">
-        <h1>BẠN ĐÃ ƯỚT</h1>
-    </div>
-
-    <div id="gameover-screen">
-        <h1>KẾT THÚC</h1>
-    </div>
-
+    <!-- Các hiệu ứng & Bảng điểm -->
+    <div id="death-screen"><h1>BẠN ĐÃ ƯỚT</h1></div>
+    <div id="gameover-screen"><h1>KẾT THÚC</h1></div>
     <div id="scoreboard-ui">
         <div class="score-box">
-            <h2>BẢNG XẾP HẠNG TỔNG</h2>
+            <h2 style="color: #00aaff; margin-top: 0;">BẢNG XẾP HẠNG TỔNG</h2>
             <table class="score-table">
-                <thead>
-                    <tr>
-                        <th>Hạng</th>
-                        <th>Người chơi</th>
-                        <th>K / D</th>
-                        <th>Điểm (Sống sót)</th>
-                    </tr>
-                </thead>
-                <tbody id="score-tbody">
-                    <!-- Nội dung bảng điểm -->
-                </tbody>
+                <thead><tr><th>Hạng</th><th>Người chơi</th><th>K / D</th><th>Điểm</th></tr></thead>
+                <tbody id="score-tbody"></tbody>
             </table>
             <button id="btn-back-lobby" class="btn-blue" style="width: auto;">QUAY LẠI SẢNH CHỜ</button>
-            <p id="wait-host-msg" style="color: #888; font-size: 14px; display: none;">Đang chờ chủ phòng khởi động lại...</p>
+            <p id="wait-host-msg" style="color: #888; display: none;">Đang chờ chủ phòng...</p>
         </div>
     </div>
 
-    <div id="main-menu">
-        <div class="menu-left">
-            <h2>MACHINE PARTY</h2>
-            <div class="room-info" id="room-display">PHÒNG: ĐANG TẢI...</div>
-            <div style="width: 100%; max-width: 400px;">
-                <button id="btn-create-room" class="btn-blue">TẠO PHÒNG MỚI</button>
-                <button id="btn-join-room" class="btn-blue">VÀO PHÒNG KHÁC</button>
-                <button id="btn-start-game" style="display: none; margin-top: 20px;">BẮT ĐẦU TRẬN ĐẤU</button>
-            </div>
-            <p id="waiting-msg" style="color: #888; margin-top: 15px; font-size: 18px;">Đang chờ chủ phòng bắt đầu...</p>
-        </div>
-        
-        <div class="menu-right">
-            <div class="panel player-panel">
-                <h3 id="player-count-title">SẢNH CHỜ (0/8)</h3>
-                <ul id="player-list">
-                    <!-- Danh sách người chơi -->
-                </ul>
-            </div>
-            
-            <div class="panel chat-panel">
-                <h3>KÊNH CHAT</h3>
-                <ul id="chat-list">
-                    <!-- Nhật ký chat -->
-                </ul>
-                <div class="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." autocomplete="off">
-                    <button id="btn-send-chat" class="btn-send">GỬI</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Nhập ID Phòng -->
-    <div id="join-modal" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 50; justify-content: center; align-items: center;">
-        <div style="background: #222; padding: 30px; border-radius: 10px; border: 2px solid #555; text-align: center; width: 350px;">
+    <!-- Modal Nhập Mã Phòng -->
+    <div id="join-modal" class="modal">
+        <div class="modal-content">
             <h3 style="margin-top: 0; color: #00aaff;">NHẬP MÃ PHÒNG</h3>
             <input type="text" id="room-input" placeholder="Ví dụ: XYZ12" style="width: 100%; padding: 15px; margin: 15px 0; background: #111; color: white; border: 1px solid #555; border-radius: 5px; font-size: 18px; text-align: center; text-transform: uppercase; box-sizing: border-box;">
             <div style="display: flex; gap: 10px;">
-                <button id="btn-cancel-join" style="background: #555; box-shadow: 0 4px 0 #333; margin:0;">HỦY</button>
+                <button id="btn-cancel-join" class="btn-gray" style="margin:0;">HỦY</button>
                 <button id="btn-confirm-join" class="btn-blue" style="margin:0;">VÀO</button>
             </div>
         </div>
     </div>
 
     <script type="module">
+        /* =========================================
+           PHẦN 3: JAVASCRIPT (Logic & 3D Engine)
+           ========================================= */
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CẤU HÌNH FIREBASE CỦA RIÊNG BẠN (CHO GITHUB PAGES) ---
-        // Thay thế object rỗng {} dưới đây bằng cấu hình lấy từ Firebase Console của bạn.
-        const myFirebaseConfig = {
+        // Thay Cấu hình Firebase của bạn vào đây (BẮT BUỘC)
+        const firebaseConfig = {
             apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
             authDomain: "machine-fight.firebaseapp.com",
             projectId: "machine-fight",
@@ -212,64 +204,44 @@
             measurementId: "G-ETMWQ9K11M"
         };
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'machine-party-github';
-        
-        // Cố gắng lấy config tự động, nếu không có thì dùng myFirebaseConfig
-        let firebaseConfig = {};
-        try {
-            firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) 
-                ? JSON.parse(__firebase_config) 
-                : myFirebaseConfig;
-        } catch (e) {
-            firebaseConfig = myFirebaseConfig;
-        }
+        const appId = 'machine-party-game';
 
-        // TẬP TRUNG KHAI BÁO CÁC BIẾN UI TẠI ĐÂY
+        // Gắn biến UI
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const lobbyScreen = document.getElementById('lobby-screen');
+        const uiLayer = document.getElementById('ui-layer');
+        const globalStatus = document.getElementById('global-status');
+        const btnCreateRoom = document.getElementById('btn-create-room');
+        const btnJoinModal = document.getElementById('btn-join-modal');
         const statusMsg = document.getElementById('status-message');
-        const mainMenu = document.getElementById('main-menu');
         const playerListUI = document.getElementById('player-list');
         const chatListUI = document.getElementById('chat-list');
         const btnStart = document.getElementById('btn-start-game');
         const waitingMsg = document.getElementById('waiting-msg');
         const roomDisplay = document.getElementById('room-display');
-
-        const deathScreen = document.getElementById('death-screen');
-        const gameOverScreen = document.getElementById('gameover-screen');
-        const scoreboardUI = document.getElementById('scoreboard-ui');
-        const scoreTbody = document.getElementById('score-tbody');
-        const btnBackLobby = document.getElementById('btn-back-lobby');
-        const waitHostMsg = document.getElementById('wait-host-msg');
-
-        // Chặn lỗi văng ra màn hình trắng nếu đưa lên Github mà chưa nhập key
-        if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) {
-            statusMsg.innerText = "THIẾU CẤU HÌNH FIREBASE!";
-            statusMsg.style.color = "#ffaa00";
-            waitingMsg.innerText = "Vui lòng mở file index.html, tìm biến 'myFirebaseConfig' và dán cấu hình Firebase của bạn vào để chơi Multiplayer.";
-            waitingMsg.style.color = "#ffaa00";
-            throw new Error("Missing Firebase Config.");
+        
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            globalStatus.innerText = "LỖI: Sai cấu hình Firebase!";
+            globalStatus.style.color = "red";
         }
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
 
         // Biến toàn cục
         let userId = null;
         let isHost = false;
-        let currentRoomId = 'GLOBAL'; // Mặc định vào phòng GLOBAL
+        let currentRoomId = null;
         let localPlayerColor = 0xffffff;
         const PLAYER_COLORS = [0x00aaff, 0xff3333, 0x33ff33, 0xffff33, 0xff33ff, 0x33ffff, 0xffaa00, 0xffffff];
         
-        // Quản lý Multiplayer
-        const remotePlayers = {}; 
-        let globalPlayersData = {}; // Lưu trữ dữ liệu tất cả người chơi cho bảng điểm
-
-        // Unsubscribe listeners (để dọn dẹp khi đổi phòng)
-        let unsubPlayers = null;
-        let unsubGameState = null;
-        let unsubChat = null;
-
-        // CẤU HÌNH TRÒ CHƠI
+        let remotePlayers = {}; 
+        let globalPlayersData = {};
+        let unsubPlayers = null, unsubGameState = null, unsubChat = null;
+        
+        // --- CẤU HÌNH THREE.JS (GAME ENGINE) ---
         const GRID_SIZE = 9;
         const TILE_SIZE = 2;
         let isGameRunning = false;
@@ -293,27 +265,20 @@
 
         const ambientLight = new THREE.AmbientLight(0x222222);
         scene.add(ambientLight);
-
         const mainSpotLight = new THREE.SpotLight(0xfff0dd, 2);
         mainSpotLight.position.set(0, 40, 0);
-        mainSpotLight.angle = Math.PI / 3;
-        mainSpotLight.penumbra = 0.5;
         mainSpotLight.castShadow = true;
-        mainSpotLight.shadow.mapSize.width = 2048;
-        mainSpotLight.shadow.mapSize.height = 2048;
         scene.add(mainSpotLight);
-
         const warningLight = new THREE.PointLight(0xff0000, 0, 30);
         warningLight.position.set(0, 15, 0);
         scene.add(warningLight);
 
         const floorGroup = new THREE.Group();
-        const tiles = []; // Phẳng hóa mảng lưới để dễ đồng bộ (0 đến 80)
+        const tiles = [];
         const tileMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9, metalness: 0.6 });
-        const dangerMat = new THREE.MeshStandardMaterial({ color: 0xff1111, emissive: 0x660000, roughness: 0.2 });
+        const dangerMat = new THREE.MeshStandardMaterial({ color: 0xff1111, emissive: 0x660000 });
         const tileGeo = new THREE.BoxGeometry(TILE_SIZE * 0.95, 1, TILE_SIZE * 0.95);
 
-        let tileIndex = 0;
         for (let x = 0; x < GRID_SIZE; x++) {
             for (let z = 0; z < GRID_SIZE; z++) {
                 const mesh = new THREE.Mesh(tileGeo, tileMat);
@@ -321,131 +286,89 @@
                 const posZ = (z - Math.floor(GRID_SIZE/2)) * TILE_SIZE;
                 mesh.position.set(posX, -0.5, posZ);
                 mesh.receiveShadow = true;
-                
-                mesh.userData = { id: tileIndex, originalY: -0.5, isDanger: false };
+                mesh.userData = { originalY: -0.5 };
                 floorGroup.add(mesh);
                 tiles.push(mesh);
-                tileIndex++;
             }
         }
         scene.add(floorGroup);
 
+        // --- ĐIỀU KHIỂN ---
         const input = { x: 0, z: 0 };
         const keys = { w: false, a: false, s: false, d: false };
-
         window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; });
         window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
-
-        const joystickManager = nipplejs.create({
-            zone: document.getElementById('joystick-zone'),
-            mode: 'static',
-            position: { left: '50%', top: '50%' },
-            color: '#ff3333'
-        });
-
-        joystickManager.on('move', (evt, data) => {
-            const force = Math.min(data.force, 1);
-            input.x = Math.cos(data.angle.radian) * force;
-            input.z = -Math.sin(data.angle.radian) * force; 
-        });
+        
+        const joystickManager = nipplejs.create({ zone: document.getElementById('joystick-zone'), mode: 'static', position: { left: '50%', top: '50%' }, color: '#ff3333' });
+        joystickManager.on('move', (evt, data) => { const force = Math.min(data.force, 1); input.x = Math.cos(data.angle.radian) * force; input.z = -Math.sin(data.angle.radian) * force; });
         joystickManager.on('end', () => { input.x = 0; input.z = 0; });
 
         function getMovementVector() {
-            let moveX = input.x; let moveZ = input.z;
+            let moveX = input.x, moveZ = input.z;
             if (keys.w || keys.s || keys.a || keys.d) {
-                moveX = 0; moveZ = 0;
-                if (keys.w) moveZ = -1;
-                if (keys.s) moveZ = 1;
-                if (keys.a) moveX = -1;
-                if (keys.d) moveX = 1;
-                if (moveX !== 0 && moveZ !== 0) {
-                    const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
-                    moveX /= len; moveZ /= len;
-                }
+                moveX = moveZ = 0;
+                if (keys.w) moveZ = -1; if (keys.s) moveZ = 1;
+                if (keys.a) moveX = -1; if (keys.d) moveX = 1;
+                if (moveX !== 0 && moveZ !== 0) { const len = Math.sqrt(moveX*moveX + moveZ*moveZ); moveX /= len; moveZ /= len; }
             }
             return { x: moveX, z: moveZ };
         }
 
+        // Tạo vị trí Spawn random ngay ngắn trên ô vuông
         function getRandomSpawn() {
-            // Sinh ngẫu nhiên trên 9x9 ô (Tương đương từ -4 đến 4 nhân với kích thước ô)
             const rx = (Math.floor(Math.random() * GRID_SIZE) - Math.floor(GRID_SIZE/2)) * TILE_SIZE;
             const rz = (Math.floor(Math.random() * GRID_SIZE) - Math.floor(GRID_SIZE/2)) * TILE_SIZE;
             return { x: rx, z: rz };
         }
 
-        // Sử dụng mô hình khối có màu sắc ngẫu nhiên để load nhanh cho 8 người
+        // --- STREAMING_CHUNK: Player Class and Logic ---
         function createPlayerMesh(colorHex) {
             const group = new THREE.Group();
-            const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.2, 16);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.7, metalness: 0.3 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.6;
-            body.castShadow = true;
-            
-            const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 1.5;
-            head.castShadow = true;
-
-            // Mắt phát sáng
-            const eyeGeo = new THREE.BoxGeometry(0.4, 0.15, 0.1);
-            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff });
-            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 16), new THREE.MeshStandardMaterial({ color: colorHex }));
+            body.position.y = 0.6; body.castShadow = true;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            head.position.y = 1.5; head.castShadow = true;
+            const eye = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff }));
             eye.position.set(0, 1.5, 0.32);
-            
             group.add(body); group.add(head); group.add(eye);
             return group;
         }
 
         class PlayerEntity {
             constructor(startX, startZ, colorHex, isLocal) {
-                this.isLocal = isLocal;
-                this.isAlive = true;
-                this.speed = 6.0;
+                this.isLocal = isLocal; this.isAlive = true; this.speed = 6.0;
                 this.mesh = createPlayerMesh(colorHex);
                 this.mesh.position.set(startX, 0, startZ);
                 scene.add(this.mesh);
-                this.targetPos = new THREE.Vector3(startX, 0, startZ); // Dùng cho lerp (người chơi khác)
+                this.targetPos = new THREE.Vector3(startX, 0, startZ);
                 this.targetRot = 0;
             }
-
             updateLocal(dt, moveX, moveZ) {
                 if (!this.isAlive) return;
-                const isMoving = Math.abs(moveX) > 0.01 || Math.abs(moveZ) > 0.01;
-
-                if (isMoving) {
+                if (Math.abs(moveX) > 0.01 || Math.abs(moveZ) > 0.01) {
                     this.mesh.position.x += moveX * this.speed * dt;
                     this.mesh.position.z += moveZ * this.speed * dt;
                     this.mesh.rotation.y = Math.atan2(moveX, moveZ);
-
                     const bound = (GRID_SIZE * TILE_SIZE) / 2 - 0.5;
                     this.mesh.position.x = THREE.MathUtils.clamp(this.mesh.position.x, -bound, bound);
                     this.mesh.position.z = THREE.MathUtils.clamp(this.mesh.position.z, -bound, bound);
                 }
             }
-
             updateRemoteInterpolation(dt) {
                 if (!this.isAlive) return;
-                // Nội suy (Lerp) vị trí của người chơi khác để trông mượt mà
                 this.mesh.position.lerp(this.targetPos, dt * 10);
-                
-                // Nội suy xoay
                 const maxRotDist = Math.PI * 2;
                 let rotDiff = (this.targetRot - this.mesh.rotation.y) % maxRotDist;
-                if (rotDiff !== rotDiff % (maxRotDist/2)) {
-                    rotDiff = (rotDiff < 0) ? rotDiff + maxRotDist : rotDiff - maxRotDist;
-                }
+                if (rotDiff !== rotDiff % (maxRotDist/2)) { rotDiff = (rotDiff < 0) ? rotDiff + maxRotDist : rotDiff - maxRotDist; }
                 this.mesh.rotation.y += rotDiff * dt * 10;
             }
-
             die() {
                 if(!this.isAlive) return;
                 this.isAlive = false;
                 this.mesh.scale.y = 0.1;
-                this.mesh.position.y = -0.5;
+                // Rơi xuống hố
+                this.mesh.position.y = -5;
             }
-
             revive(x, z) {
                 this.isAlive = true;
                 this.mesh.scale.y = 1;
@@ -453,74 +376,40 @@
                 this.targetPos.set(x, 0, z);
             }
         }
-
         let localPlayer = null;
+        let playersRef = null, gameStateRef = null, chatRef = null;
 
-        // Dynamic Refs cho việc đổi Phòng
-        let playersRef = null;
-        let gameStateRef = null;
-        let chatRef = null;
-
-        async function initGame() {
+        // --- LUỒNG KHỞI TẠO & ĐĂNG NHẬP ---
+        async function initApp() {
+            if(!auth) return;
             try {
-                // Đăng nhập 
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
+                await signInAnonymously(auth);
                 userId = auth.currentUser.uid;
                 localPlayerColor = PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
                 
-                // Gia nhập phòng mặc định
-                await joinRoom('GLOBAL');
+                globalStatus.innerText = "Đã kết nối! Bạn có thể tạo hoặc vào phòng.";
+                globalStatus.style.color = "#00ff00";
+                btnCreateRoom.disabled = false;
+                btnJoinModal.disabled = false;
 
-                // Bắt đầu gửi tọa độ định kỳ
-                setInterval(sendLocalState, 100);
-
-                // Lắng nghe phím tắt/thoát trang
-                window.addEventListener('beforeunload', () => {
-                    if (userId && playersRef) {
-                        deleteDoc(doc(playersRef, userId));
-                        addSystemMessage(`Người chơi ${userId.substring(0,5)} đã thoát.`);
-                    }
-                });
-                
-                animate(); // Khởi động vòng lặp render 3D
+                setInterval(sendLocalState, 100); // Đồng bộ tọa độ 10 lần/giây
+                animate();
             } catch (err) {
-                console.error("Lỗi khởi tạo Firebase:", err);
-                statusMsg.innerText = "LỖI KẾT NỐI MÁY CHỦ";
-                statusMsg.style.color = "#ff0000";
+                globalStatus.innerText = "LỖI KẾT NỐI MÁY CHỦ"; globalStatus.style.color = "red";
             }
         }
 
+        // --- LUỒNG VÀO PHÒNG / THOÁT PHÒNG ---
         async function joinRoom(roomId) {
-            // Dọn dẹp phòng cũ nếu có
-            if (unsubPlayers) unsubPlayers();
-            if (unsubGameState) unsubGameState();
-            if (unsubChat) unsubChat();
-            
-            if (userId && playersRef) {
-                await deleteDoc(doc(playersRef, userId));
-                addSystemMessage(`Người chơi ${userId.substring(0,5)} đã rời phòng.`);
-            }
-
-            Object.values(remotePlayers).forEach(rp => scene.remove(rp.mesh));
-            for(let key in remotePlayers) delete remotePlayers[key];
-            if (localPlayer) {
-                scene.remove(localPlayer.mesh);
-                localPlayer = null;
-            }
-
             currentRoomId = roomId.toUpperCase();
             roomDisplay.innerText = `PHÒNG: ${currentRoomId}`;
-            isHost = false;
-            btnStart.style.display = 'none';
-            waitingMsg.style.display = 'block';
-            chatListUI.innerHTML = ''; // Xóa chat cũ
+            isHost = false; btnStart.style.display = 'none'; waitingMsg.style.display = 'block';
+            
+            // Đổi UI
+            welcomeScreen.style.display = 'none';
+            lobbyScreen.style.display = 'flex';
+            document.getElementById('scoreboard-ui').style.display = 'none';
 
-            // Cập nhật Refs theo Room ID
             playersRef = collection(db, 'artifacts', appId, 'public', 'data', `players_${currentRoomId}`);
             gameStateRef = doc(db, 'artifacts', appId, 'public', 'data', `gameState_${currentRoomId}`, 'state');
             chatRef = collection(db, 'artifacts', appId, 'public', 'data', `chat_${currentRoomId}`);
@@ -528,480 +417,271 @@
             const spawn = getRandomSpawn();
             localPlayer = new PlayerEntity(spawn.x, spawn.z, localPlayerColor, true);
 
-            // Ghi danh lên Firestore
             await setDoc(doc(playersRef, userId), {
                 x: spawn.x, z: spawn.z, rot: 0, isAlive: true, color: localPlayerColor, joinedAt: Date.now(),
-                score: 0, kills: 0, deaths: 0            });
-
-            // Gửi tin nhắn hệ thống
+                score: 0, kills: 0, deaths: 0
+            });
             addSystemMessage(`Người chơi ${userId.substring(0,5)} đã tham gia!`);
 
             // Kiểm tra Host
-            const gameStateSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `gameState_${currentRoomId}`));
-            if (gameStateSnap.empty || !gameStateSnap.docs.find(d => d.id === 'state')) {
-                isHost = true;
-                btnStart.style.display = 'block';
-                waitingMsg.style.display = 'none';
-                await setDoc(gameStateRef, {
-                    phase: 'LOBBY', hostId: userId, traps: [], timestamp: Date.now()
-                });
+            const stateSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `gameState_${currentRoomId}`));
+            if (stateSnap.empty || !stateSnap.docs.find(d => d.id === 'state')) {
+                isHost = true; btnStart.style.display = 'block'; waitingMsg.style.display = 'none';
+                await setDoc(gameStateRef, { phase: 'LOBBY', hostId: userId, traps: [], timestamp: Date.now() });
             } else {
-                const stateData = gameStateSnap.docs.find(d => d.id === 'state').data();
-                if (stateData.hostId === userId) {
-                    isHost = true;
-                    btnStart.style.display = 'block';
-                    waitingMsg.style.display = 'none';
+                if (stateSnap.docs.find(d => d.id === 'state').data().hostId === userId) {
+                    isHost = true; btnStart.style.display = 'block'; waitingMsg.style.display = 'none';
                 }
             }
-
             setupNetworkListeners();
         }
 
+        async function leaveRoom() {
+            if (!currentRoomId) return;
+            if (userId && playersRef) {
+                await deleteDoc(doc(playersRef, userId));
+                addSystemMessage(`Người chơi ${userId.substring(0,5)} đã rời phòng.`);
+            }
+            // Dọn dẹp listener
+            if (unsubPlayers) unsubPlayers();
+            if (unsubGameState) unsubGameState();
+            if (unsubChat) unsubChat();
+            
+            // Xóa người chơi trên scene
+            Object.values(remotePlayers).forEach(rp => scene.remove(rp.mesh));
+            for(let key in remotePlayers) delete remotePlayers[key];
+            if (localPlayer) { scene.remove(localPlayer.mesh); localPlayer = null; }
+
+            currentRoomId = null;
+            isGameRunning = false;
+            
+            // Reset UI
+            lobbyScreen.style.display = 'none';
+            uiLayer.style.display = 'none';
+            document.getElementById('scoreboard-ui').style.display = 'none';
+            document.getElementById('death-screen').style.display = 'none';
+            document.getElementById('gameover-screen').style.display = 'none';
+            welcomeScreen.style.display = 'flex';
+        }
+
+        window.addEventListener('beforeunload', leaveRoom); // Rời phòng khi đóng tab
+
+        // --- STREAMING_CHUNK: Setup Event Listeners for UI ---
+        btnCreateRoom.addEventListener('click', () => { joinRoom(Math.random().toString(36).substring(2, 7)); });
+        btnJoinModal.addEventListener('click', () => { document.getElementById('join-modal').style.display = 'flex'; });
+        document.getElementById('btn-cancel-join').addEventListener('click', () => { document.getElementById('join-modal').style.display = 'none'; });
+        document.getElementById('btn-confirm-join').addEventListener('click', () => {
+            const val = document.getElementById('room-input').value.trim();
+            if (val.length > 0) { document.getElementById('join-modal').style.display = 'none'; joinRoom(val); }
+        });
+        document.getElementById('btn-leave-lobby').addEventListener('click', leaveRoom);
+        document.getElementById('btn-quit-game').addEventListener('click', leaveRoom);
+        document.getElementById('btn-back-lobby').addEventListener('click', () => {
+            if (isHost) updateDoc(gameStateRef, { phase: 'LOBBY' });
+            else { document.getElementById('btn-back-lobby').style.display = 'none'; document.getElementById('wait-host-msg').style.display = 'block'; }
+        });
+
         async function addSystemMessage(text) {
             if (!chatRef) return;
-            try {
-                await setDoc(doc(chatRef, Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5)), {
-                    isSystem: true, text: text, timestamp: Date.now()
-                });
-            } catch (e) { console.error("Lỗi gửi tin nhắn:", e); }
+            try { await setDoc(doc(chatRef, Date.now().toString()), { isSystem: true, text: text, timestamp: Date.now() }); } catch(e){}
         }
-
-        /* --- LOGIC NÚT BẤM GIAO DIỆN PHÒNG --- */
-        document.getElementById('btn-create-room').addEventListener('click', () => {
-            const newRoomId = Math.random().toString(36).substring(2, 7).toUpperCase();
-            joinRoom(newRoomId);
+        document.getElementById('btn-send-chat').addEventListener('click', () => {
+            const inp = document.getElementById('chat-input'); const text = inp.value.trim();
+            if(!text || !userId || !chatRef) return;
+            inp.value = '';
+            setDoc(doc(chatRef, Date.now().toString() + '_' + userId), { userId: userId, name: userId.substring(0, 5), color: localPlayerColor, text: text, timestamp: Date.now() });
         });
 
-        const joinModal = document.getElementById('join-modal');
-        const roomInput = document.getElementById('room-input');
-        
-        document.getElementById('btn-join-room').addEventListener('click', () => {
-            joinModal.style.display = 'flex';
-            roomInput.focus();
-        });
-        
-        document.getElementById('btn-cancel-join').addEventListener('click', () => {
-            joinModal.style.display = 'none';
-            roomInput.value = '';
-        });
-
-        document.getElementById('btn-confirm-join').addEventListener('click', () => {
-            const val = roomInput.value.trim();
-            if (val.length > 0) {
-                joinModal.style.display = 'none';
-                joinRoom(val);
-                roomInput.value = '';
-            }
-        });
-
-        /* --- LOGIC CHAT --- */
-        document.getElementById('btn-send-chat').addEventListener('click', sendChatMessage);
-        document.getElementById('chat-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendChatMessage();
-        });
-
-        async function sendChatMessage() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if (!text || !userId || !chatRef) return;
-            
-            input.value = '';
-            try {
-                await setDoc(doc(chatRef, Date.now().toString() + '_' + userId), {
-                    userId: userId,
-                    name: userId.substring(0, 5),
-                    color: localPlayerColor,
-                    text: text,
-                    timestamp: Date.now()
-                });
-            } catch (e) { console.error("Lỗi gửi chat:", e); }
-        }
-
+        // --- LOGIC MẠNG VÀ TRẠNG THÁI GAME ---
         function setupNetworkListeners() {
-            if (!userId) return;
-
-            // 1. Lắng nghe cập nhật người chơi
             unsubPlayers = onSnapshot(playersRef, (snapshot) => {
-                playerListUI.innerHTML = '';
-                let playerCount = 0;
-                globalPlayersData = {};
+                playerListUI.innerHTML = ''; let playerCount = 0; globalPlayersData = {};
                 snapshot.docs.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const pid = docSnap.id;
-                    playerCount++;
-                    globalPlayersData[pid] = data; /* Lưu lại để dùng cho Scoreboard */
-
-                    // Cập nhật giao diện Danh sách người chơi
-                    const li = document.createElement('li');
-                    const colorHex = `#${data.color.toString(16).padStart(6, '0')}`;
-                    li.style.borderLeft = `5px solid ${colorHex}`;
-                    li.innerHTML = `<span style="color:${colorHex}">${pid.substring(0,5)} ${pid === userId ? '(Bạn)' : ''}</span> 
+                    const data = docSnap.data(); const pid = docSnap.id; playerCount++; globalPlayersData[pid] = data;
+                    const li = document.createElement('li'); const cHex = `#${data.color.toString(16).padStart(6, '0')}`;
+                    li.style.borderLeft = `5px solid ${cHex}`;
+                    li.innerHTML = `<span style="color:${cHex}">${pid.substring(0,5)} ${pid === userId ? '(Bạn)' : ''}</span> 
                                     <span style="color:${data.isAlive ? '#00ff00' : '#888'}">${data.isAlive ? 'ĐANG SỐNG' : 'ĐÃ CHẾT'}</span>`;
-                    
-                    if(data.isAlive === false) li.style.opacity = '0.5';
+                    if(!data.isAlive) li.style.opacity = '0.5';
                     playerListUI.appendChild(li);
 
                     if (pid !== userId) {
-                        // Người chơi khác
-                        if (!remotePlayers[pid]) {
-                            remotePlayers[pid] = new PlayerEntity(data.x, data.z, data.color, false);
-                        }
-                        remotePlayers[pid].targetPos.set(data.x, 0, data.z);
-                        remotePlayers[pid].targetRot = data.rot;
-                        
-                        if (!data.isAlive && remotePlayers[pid].isAlive) {
-                            remotePlayers[pid].die();
-                        } else if (data.isAlive && !remotePlayers[pid].isAlive) {
-                            remotePlayers[pid].revive(data.x, data.z);
-                        }
+                        if (!remotePlayers[pid]) remotePlayers[pid] = new PlayerEntity(data.x, data.z, data.color, false);
+                        remotePlayers[pid].targetPos.set(data.x, 0, data.z); remotePlayers[pid].targetRot = data.rot;
+                        if (!data.isAlive && remotePlayers[pid].isAlive) remotePlayers[pid].die();
+                        else if (data.isAlive && !remotePlayers[pid].isAlive) remotePlayers[pid].revive(data.x, data.z);
                     }
                 });
-
-                document.getElementById('player-count-title').innerText = `SẢNH CHỜ (${playerCount}/8)`;
-
-                // Xóa những người đã thoát
+                document.getElementById('player-count-title').innerText = `NGƯỜI CHƠI (${playerCount}/8)`;
                 Object.keys(remotePlayers).forEach(pid => {
-                    if (!snapshot.docs.find(d => d.id === pid)) {
-                        scene.remove(remotePlayers[pid].mesh);
-                        delete remotePlayers[pid];
-                    }
+                    if (!snapshot.docs.find(d => d.id === pid)) { scene.remove(remotePlayers[pid].mesh); delete remotePlayers[pid]; }
                 });
-            }, (err) => console.error(err));
+            });
 
-            // 2. Lắng nghe Kênh Chat
             unsubChat = onSnapshot(chatRef, (snapshot) => {
-                const messages = [];
-                snapshot.docs.forEach(doc => messages.push(doc.data()));
-                messages.sort((a, b) => a.timestamp - b.timestamp); // Sắp xếp theo thời gian gửi
-
+                const msgs = []; snapshot.docs.forEach(doc => msgs.push(doc.data()));
+                msgs.sort((a, b) => a.timestamp - b.timestamp);
                 chatListUI.innerHTML = '';
-                // Chỉ hiển thị 30 tin nhắn mới nhất
-                messages.slice(-30).forEach(msg => {
+                msgs.slice(-30).forEach(msg => {
                     const li = document.createElement('li');
-                    if (msg.isSystem) {
-                        li.className = 'sys-msg';
-                        li.innerText = msg.text;
-                    } else {
-                        li.className = 'chat-msg';
-                        const colorHex = `#${(msg.color || 0xffffff).toString(16).padStart(6, '0')}`;
-                        li.innerHTML = `<span class="name" style="color:${colorHex}">[${msg.name}]:</span> ${msg.text}`;
-                    }
+                    if (msg.isSystem) { li.style.color = '#888'; li.style.fontStyle = 'italic'; li.innerText = msg.text; } 
+                    else { li.className = 'chat-msg'; const cHex = `#${(msg.color || 0xffffff).toString(16).padStart(6, '0')}`; li.innerHTML = `<span style="color:${cHex}; font-weight:bold;">[${msg.name}]:</span> ${msg.text}`; }
                     chatListUI.appendChild(li);
                 });
-                chatListUI.scrollTop = chatListUI.scrollHeight; // Cuộn xuống tự động
-            }, (err) => console.error(err));
+                chatListUI.scrollTop = chatListUI.scrollHeight;
+            });
 
-
-            // 3. Lắng nghe Trạng thái trò chơi (GameState)
-            let previousPhase = 'LOBBY'; /* Dùng để tính điểm */
-
+            let previousPhase = 'LOBBY';
             unsubGameState = onSnapshot(gameStateRef, (docSnap) => {
                 if (!docSnap.exists()) return;
                 const data = docSnap.data();
 
                 if (data.phase === 'LOBBY') {
-                    mainMenu.style.display = 'flex';
-                    mainMenu.style.opacity = '1';
-                    scoreboardUI.style.display = 'none';
-                    isGameRunning = false;
-                } 
-                else {
-                    // Hiệu ứng mờ dần (Fade out) UI khi vào game
-                    mainMenu.style.opacity = '0';
-                    setTimeout(() => { if(isGameRunning) mainMenu.style.display = 'none'; }, 500);
-                    isGameRunning = true;
+                    lobbyScreen.style.display = 'flex'; uiLayer.style.display = 'none'; document.getElementById('scoreboard-ui').style.display = 'none'; isGameRunning = false;
+                } else {
+                    lobbyScreen.style.display = 'none'; uiLayer.style.display = 'flex'; isGameRunning = true;
                     
-                    // Tính điểm Sống sót: Nếu chuyển từ DROP -> SAFE mà vẫn sống
                     if (data.phase === 'SAFE' && previousPhase === 'DROP') {
                         if (localPlayer && localPlayer.isAlive) {
-                            const currentScore = globalPlayersData[userId]?.score || 0;
-                            updateDoc(doc(playersRef, userId), { score: currentScore + 10 });
+                            const score = (globalPlayersData[userId]?.score || 0) + 10;
+                            updateDoc(doc(playersRef, userId), { score: score });
                         }
                     }
 
                     if (data.phase === 'SAFE') {
-                        // Khi ván mới bắt đầu (từ LOBBY hoặc GAMEOVER sang SAFE)
                         if (previousPhase === 'LOBBY' || previousPhase === 'GAMEOVER') {
                             if (localPlayer) {
                                 const spawn = getRandomSpawn();
                                 localPlayer.revive(spawn.x, spawn.z);
-                                // Gửi vị trí mới lên server
                                 updateDoc(doc(playersRef, userId), { x: spawn.x, z: spawn.z });
                             }
                         }
-
-                        if(localPlayer && localPlayer.isAlive) {
-                            statusMsg.innerText = "SỐNG SÓT: DI CHUYỂN";
-                            statusMsg.style.color = "#00ff00";
-                        }
-                        warningLight.intensity = 0;
-                        resetTraps();
+                        if(localPlayer && localPlayer.isAlive) { statusMsg.innerText = "SỐNG SÓT: DI CHUYỂN"; statusMsg.style.color = "#00ff00"; }
+                        warningLight.intensity = 0; resetTraps();
                     } 
                     else if (data.phase === 'WARNING') {
-                        if(localPlayer && localPlayer.isAlive) {
-                            statusMsg.innerText = "CẢNH BÁO: BẪY KÍCH HOẠT!";
-                            statusMsg.style.color = "#ffaa00";
-                        }
+                        if(localPlayer && localPlayer.isAlive) { statusMsg.innerText = "CẢNH BÁO: BẪY KÍCH HOẠT!"; statusMsg.style.color = "#ffaa00"; }
                         warningLight.intensity = 2;
-                        highlightTraps(data.traps);
+                        if(data.traps) data.traps.forEach(idx => { if (tiles[idx]) tiles[idx].material = dangerMat; });
                     } 
                     else if (data.phase === 'DROP') {
-                        if(localPlayer && localPlayer.isAlive) {
-                            statusMsg.innerText = "RƠI XUỐNG!";
-                            statusMsg.style.color = "#ff3333";
-                        }
+                        if(localPlayer && localPlayer.isAlive) { statusMsg.innerText = "RƠI XUỐNG!"; statusMsg.style.color = "#ff3333"; }
                         warningLight.intensity = 0;
-                        dropTraps(data.traps);
-                        /* Dừng gọi checkLocalDeath() ở đây, chuyển nó vào vòng lặp animate() */
+                        if(data.traps) data.traps.forEach(idx => { if (tiles[idx]) tiles[idx].position.y = -5; });
                     }
                     else if (data.phase === 'GAMEOVER') {
-                        warningLight.intensity = 0;
-                        gameOverScreen.style.display = 'flex';
-                        
-                        // Sau 2 giây hiện chữ KẾT THÚC thì hiện bảng điểm
-                        setTimeout(() => {
-                            gameOverScreen.style.display = 'none';
-                            showScoreboard();
-                    }, 2000);
+                        warningLight.intensity = 0; document.getElementById('gameover-screen').style.display = 'flex';
+                        setTimeout(() => { document.getElementById('gameover-screen').style.display = 'none'; showScoreboard(); }, 2000);
+                    }
                 }
-                
-                previousPhase = data.phase; // Lưu lại trạng thái
-            }
-        }, (err) => console.error(err));
+                previousPhase = data.phase;
+            });
         }
 
         async function sendLocalState() {
-            if (!userId || !localPlayer || !localPlayer.isAlive) return;
-            try {
-                await updateDoc(doc(playersRef, userId), {
-                    x: localPlayer.mesh.position.x,
-                    z: localPlayer.mesh.position.z,
-                    rot: localPlayer.mesh.rotation.y
-                });
-            } catch (e) { /* ignore rapid failures */ }
+            if (!userId || !localPlayer || !localPlayer.isAlive || !isGameRunning) return;
+            try { await updateDoc(doc(playersRef, userId), { x: localPlayer.mesh.position.x, z: localPlayer.mesh.position.z, rot: localPlayer.mesh.rotation.y }); } catch (e) {}
         }
 
-        let hostCycleTime = 0;
-        let currentPhase = 'LOBBY';
-
+        // --- STREAMING_CHUNK: Host Logic and Main Loop ---
+        let hostCycleTime = 0; let currentPhase = 'LOBBY';
         btnStart.addEventListener('click', async () => {
             if (!isHost) return;
-            
             const batchUpdate = [];
-            Object.keys(globalPlayersData).forEach(pid => {
-                batchUpdate.push(updateDoc(doc(playersRef, pid), { isAlive: true }));
-            });
+            Object.keys(globalPlayersData).forEach(pid => { batchUpdate.push(updateDoc(doc(playersRef, pid), { isAlive: true })); });
             await Promise.all(batchUpdate);
-
             await updateDoc(gameStateRef, { phase: 'SAFE', traps: [] });
-            currentPhase = 'SAFE';
-            hostCycleTime = 0;
+            currentPhase = 'SAFE'; hostCycleTime = 0;
         });
 
-        btnBackLobby.addEventListener('click', () => {
-            if (isHost) {
-                updateDoc(gameStateRef, { phase: 'LOBBY' });
-            } else {
-                // Client chỉ biết chờ
-                btnBackLobby.style.display = 'none';
-                waitHostMsg.style.display = 'block';
-            }
-        });
-
-        // Host tự chạy mô phỏng thời gian và đổi Phase
         function runHostLogic(dt) {
             if (!isHost || currentPhase === 'LOBBY' || currentPhase === 'GAMEOVER') return;
-            
             hostCycleTime += dt;
+            let allDead = true; Object.values(globalPlayersData).forEach(p => { if(p.isAlive) allDead = false; });
+            if (allDead && hostCycleTime > 1.0) { currentPhase = 'GAMEOVER'; updateDoc(gameStateRef, { phase: 'GAMEOVER' }); return; }
 
-            let allDead = true;
-            Object.values(globalPlayersData).forEach(p => {
-                if(p.isAlive) allDead = false;
-            });
-            
-            // Chỉ kết thúc khi ít nhất chu kỳ SAFE đầu tiên đã bắt đầu (tránh kết thúc ngay giây đầu)
-            if (allDead && hostCycleTime > 1.0) {
-                currentPhase = 'GAMEOVER';
-                updateDoc(gameStateRef, { phase: 'GAMEOVER' });
-                return;
-            }
-
-            // Chu kỳ 1: An toàn (4 giây)
-            if (currentPhase === 'SAFE' && hostCycleTime > 4.0) {
-                currentPhase = 'WARNING';
-                hostCycleTime = 0;
-                
-                // Tạo bẫy ngẫu nhiên (30% đến 40% lưới)
-                const newTraps = [];
-                for(let i=0; i<tiles.length; i++) {
-                    if (Math.random() < 0.35) newTraps.push(i);
-                }
+            if (currentPhase === 'SAFE' && hostCycleTime > 3.0) {
+                currentPhase = 'WARNING'; hostCycleTime = 0;
+                const newTraps = []; tiles.forEach((t, i) => { if (Math.random() < 0.4) newTraps.push(i); }); // 40% bẫy
                 updateDoc(gameStateRef, { phase: 'WARNING', traps: newTraps, timestamp: Date.now() });
             }
-
-            // Chu kỳ 2: Cảnh báo đỏ (3 giây)
-            if (currentPhase === 'WARNING' && hostCycleTime > 3.0) {
-                currentPhase = 'DROP';
-                hostCycleTime = 0;
-                // Không đổi mảng traps, chỉ đổi pha
+            if (currentPhase === 'WARNING' && hostCycleTime > 2.5) {
+                currentPhase = 'DROP'; hostCycleTime = 0;
                 updateDoc(gameStateRef, { phase: 'DROP' });
             }
-
-            // Chu kỳ 3: Sụp đổ (2.5 giây)
-            if (currentPhase === 'DROP' && hostCycleTime > 2.5) {
-                currentPhase = 'SAFE';
-                hostCycleTime = 0;
+            if (currentPhase === 'DROP' && hostCycleTime > 2.0) {
+                currentPhase = 'SAFE'; hostCycleTime = 0;
                 updateDoc(gameStateRef, { phase: 'SAFE', traps: [] });
             }
         }
 
         function resetTraps() {
-            tiles.forEach(tile => {
-                tile.position.y = tile.userData.originalY;
-                tile.material = tileMat;
-                tile.userData.isDanger = false;
-            });
-        }
-
-        function highlightTraps(trapIndices) {
-            if(!trapIndices) return;
-            trapIndices.forEach(idx => {
-                if (tiles[idx]) {
-                    tiles[idx].material = dangerMat;
-                    tiles[idx].userData.isDanger = true;
-                }
-            });
-        }
-
-        function dropTraps(trapIndices) {
-            if(!trapIndices) return;
-            trapIndices.forEach(idx => {
-                if (tiles[idx]) {
-                    tiles[idx].position.y = -5;
-                }
-            });
+            tiles.forEach(tile => { tile.position.y = tile.userData.originalY; tile.material = tileMat; });
         }
 
         function checkLocalDeath() {
-            if (!localPlayer || !localPlayer.isAlive) return;
-
-            let closestTile = null;
-            let minDist = Infinity;
+            if (!localPlayer || !localPlayer.isAlive || !isGameRunning) return;
+            let closestTile = null; let minDist = Infinity;
             const pPos = new THREE.Vector3(localPlayer.mesh.position.x, 0, localPlayer.mesh.position.z);
-
             tiles.forEach(tile => {
                 const dist = pPos.distanceTo(new THREE.Vector3(tile.position.x, 0, tile.position.z));
-                if (dist < minDist) {
-                    minDist = dist;
-                    closestTile = tile;
-                }
+                if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
-
-            // Rơi xuống bẫy nếu ô gần nhất đang sụp (y < -1) và khoảng cách đủ gần tâm ô
-            if (closestTile && closestTile.position.y < -1 && minDist < (TILE_SIZE * 0.7)) {
+            // Nếu ô gần nhất đã thụt sâu xuống dưới và bạn đứng đủ gần tâm
+            if (closestTile && closestTile.position.y < -2 && minDist < (TILE_SIZE * 0.75)) {
                 localPlayer.die();
-                
                 const currentDeaths = globalPlayersData[userId]?.deaths || 0;
-                
-                // Báo cho server
                 updateDoc(doc(playersRef, userId), { isAlive: false, deaths: currentDeaths + 1 });
-
-                // Hiện hiệu ứng "BẠN ĐÃ ƯỚT"
-                deathScreen.style.display = 'flex';
-                statusMsg.innerText = "BẠN ĐÃ BỊ LOẠI!";
-                statusMsg.style.color = "#ff0000";
-
-                // Đợi 1 giây, tắt hiệu ứng và chuyển sang UI Người Xem
+                document.getElementById('death-screen').style.display = 'flex';
+                statusMsg.innerText = "BẠN ĐÃ BỊ LOẠI!"; statusMsg.style.color = "#ff0000";
                 setTimeout(() => {
-                    deathScreen.style.display = 'none';
-                    if (gameOverScreen.style.display !== 'flex') {
-                        statusMsg.innerText = "CHẾ ĐỘ NGƯỜI XEM";
-                        statusMsg.style.color = "#888";
-                    }
+                    document.getElementById('death-screen').style.display = 'none';
+                    if (document.getElementById('gameover-screen').style.display !== 'flex') { statusMsg.innerText = "CHẾ ĐỘ NGƯỜI XEM"; statusMsg.style.color = "#888"; }
                 }, 1000);
             }
         }
 
         function showScoreboard() {
-            scoreboardUI.style.display = 'flex';
-            scoreTbody.innerHTML = '';
+            const scoreUI = document.getElementById('scoreboard-ui');
+            scoreUI.style.display = 'flex'; document.getElementById('score-tbody').innerHTML = '';
             
-            if (isHost) {
-                btnBackLobby.style.display = 'inline-block';
-                waitHostMsg.style.display = 'none';
-                btnBackLobby.innerText = "QUAY LẠI SẢNH CHỜ";
-            } else {
-                btnBackLobby.style.display = 'inline-block';
-                btnBackLobby.innerText = "SẴN SÀNG";
-                waitHostMsg.style.display = 'none';
-            }
+            const btnBack = document.getElementById('btn-back-lobby');
+            const waitMsg = document.getElementById('wait-host-msg');
+            if (isHost) { btnBack.style.display = 'inline-block'; waitMsg.style.display = 'none'; btnBack.innerText = "QUAY LẠI SẢNH CHỜ"; } 
+            else { btnBack.style.display = 'inline-block'; btnBack.innerText = "SẴN SÀNG"; waitMsg.style.display = 'none'; }
 
-            // Chuyển object thành array để sắp xếp
-            const playersArr = Object.keys(globalPlayersData).map(pid => {
-                return { id: pid, ...globalPlayersData[pid] };
-            });
-
-            // Sắp xếp theo Điểm giảm dần
+            const playersArr = Object.keys(globalPlayersData).map(pid => ({ id: pid, ...globalPlayersData[pid] }));
             playersArr.sort((a, b) => b.score - a.score);
-
             playersArr.forEach((p, index) => {
-                const tr = document.createElement('tr');
-                const rankClass = index === 0 ? 'rank-1' : '';
-                const colorHex = `#${p.color.toString(16).padStart(6, '0')}`;
-                
-                let displayName = p.id.substring(0, 5);
-                if (p.id === userId) displayName += ' (Bạn)';
-
-                tr.innerHTML = `
-                    <td class="${rankClass}">#${index + 1}</td>
-                    <td style="color:${colorHex}">${displayName}</td>
-                    <td>${p.kills} / ${p.deaths}</td>
-                    <td class="${rankClass}">${p.score}</td>
-                `;
-                scoreTbody.appendChild(tr);
+                const tr = document.createElement('tr'); const cHex = `#${p.color.toString(16).padStart(6, '0')}`;
+                tr.innerHTML = `<td style="color:${index===0?'#ffd700':''}">#${index + 1}</td> <td style="color:${cHex}">${p.id.substring(0, 5)} ${p.id===userId?'(Bạn)':''}</td> <td>${p.kills} / ${p.deaths}</td> <td style="color:${index===0?'#ffd700':''}">${p.score}</td>`;
+                document.getElementById('score-tbody').appendChild(tr);
             });
         }
 
-        // Responsive Camera
         window.addEventListener('resize', () => {
             const aspect = window.innerWidth / window.innerHeight;
-            camera.left = -d * aspect; camera.right = d * aspect;
-            camera.top = d; camera.bottom = -d;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.left = -d * aspect; camera.right = d * aspect; camera.top = d; camera.bottom = -d;
+            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            const dt = clock.getDelta();
-
+            const dt = Math.min(clock.getDelta(), 0.1); // Giới hạn dt tránh nhảy khung hình lớn
             if (isGameRunning) {
-                // Local Player Update (Immediate feedback)
                 if (localPlayer) {
                     const vec = getMovementVector();
                     localPlayer.updateLocal(dt, vec.x, vec.z);
-                    
-                    checkLocalDeath();
+                    checkLocalDeath(); // KIỂM TRA CHẾT MỖI KHUNG HÌNH (Sửa lỗi không rơi bẫy)
                 }
-                
-                // Remote Players Interpolation
                 Object.values(remotePlayers).forEach(rp => rp.updateRemoteInterpolation(dt));
-
-                // Host Simulation
                 runHostLogic(dt);
-
-                // Flashing light effect during WARNING
-                if (warningLight.intensity > 0) {
-                    warningLight.intensity = Math.abs(Math.sin(Date.now() * 0.01)) * 3;
-                }
+                if (warningLight.intensity > 0) warningLight.intensity = Math.abs(Math.sin(Date.now() * 0.01)) * 3;
             }
-
             renderer.render(scene, camera);
         }
 
-        // BẮT ĐẦU APP
-        initGame();
-
+        initApp();
     </script>
 </body>
 </html>
