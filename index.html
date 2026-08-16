@@ -1,10 +1,3 @@
-Tôi đã thiết kế lại hoàn toàn hệ thống luật chơi theo đúng yêu cầu của bạn (Alphabet Survival). 
-
-Để tối ưu hóa hiệu suất 3D cho web, thay vì tạo các mô hình 3D chữ (có thể làm đứng máy điện thoại), tôi đã lập trình để **Three.js vẽ trực tiếp các chữ X, Y, Z lên vân bề mặt (Texture)** của các ô vuông bằng Canvas2D.
-
-Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML, JS). Bạn hãy copy toàn bộ và dán đè vào file `index.html` của bạn, sau đó đẩy lên Github.
-
-```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -12,110 +5,152 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Machine Party - Alphabet Survival</title>
     <style>
-        /* ================= PHẦN 1: CSS UI & BẢNG ĐIỀU KHIỂN ================= */
+        /* ================= CSS UI & BẢNG ĐIỀU KHIỂN ================= */
         body { margin: 0; overflow: hidden; background-color: #0a0a0a; color: #fff; font-family: 'Oswald', sans-serif; user-select: none; }
         canvas { display: block; }
-
-        /* Màn hình chờ (Welcome) */
-        #welcomeScreen, #lobbyScreen, #gameOverScreen {
+        
+        /* Layout dùng chung cho các màn hình UI */
+        .screen {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: radial-gradient(circle, #1a1a1a, #000);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
-        h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px #ff0000; margin-bottom: 5px; text-transform: uppercase; }
-        .subtitle { font-size: 16px; color: #888; margin-bottom: 40px; }
+        .hidden { display: none !important; }
 
-        /* Nút bấm UI */
+        h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px #ff0000; margin-bottom: 5px; text-transform: uppercase; text-align: center;}
+        .subtitle { font-size: 16px; color: #888; margin-bottom: 40px; text-align: center;}
+
+        /* Nút bấm */
         .btn {
-            background: #0088ff; color: white; border: none; padding: 15px 40px; font-size: 20px; font-weight: bold; font-family: inherit;
+            background: #0088ff; color: white; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; font-family: inherit;
             cursor: pointer; border-radius: 5px; margin: 10px; width: 300px; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0, 136, 255, 0.4);
             transition: 0.2s;
         }
         .btn:hover { background: #00aaff; transform: translateY(-2px); }
         .btn-danger { background: #ff3333; box-shadow: 0 4px 15px rgba(255, 51, 51, 0.4); }
         .btn-danger:hover { background: #ff5555; }
+        .btn-secondary { background: #555; box-shadow: 0 4px 15px rgba(85, 85, 85, 0.4); }
+        .btn-secondary:hover { background: #666; }
         
-        input[type="text"] {
-            padding: 15px; font-size: 18px; text-align: center; width: 270px; margin: 10px; border-radius: 5px; border: 2px solid #444; background: #111; color: #00aaff; outline: none; font-family: inherit; font-weight: bold;
+        /* Form Inputs */
+        .form-group { display: flex; flex-direction: column; width: 300px; margin-bottom: 15px; }
+        .form-group label { color: #00aaff; font-size: 14px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;}
+        input[type="text"], input[type="number"], input[type="password"], select {
+            padding: 12px; font-size: 16px; border-radius: 5px; border: 2px solid #333; background: #111; color: #fff; outline: none; font-family: inherit;
         }
+        input:focus, select:focus { border-color: #00aaff; }
+
+        /* Bảng Danh Sách Phòng (Server Browser) */
+        .room-browser { width: 90%; max-width: 800px; height: 50vh; background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 10px; padding: 20px; overflow-y: auto; margin-bottom: 20px;}
+        .room-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #0088ff; }
+        .room-row.playing { border-left-color: #ff3333; opacity: 0.7; }
+        .room-info { display: flex; flex-direction: column; }
+        .room-name { font-size: 20px; font-weight: bold; color: #fff; }
+        .room-details { font-size: 14px; color: #aaa; margin-top: 5px; }
+        .room-details span { margin-right: 15px; }
+        .btn-join { width: auto; padding: 10px 20px; margin: 0; font-size: 16px; }
 
         /* Giao diện Sảnh Lobby */
         .lobby-container { display: flex; gap: 20px; width: 90%; max-width: 1000px; height: 60vh; }
         .panel { background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; }
         .panel-title { color: #00aaff; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        
-        /* Bảng người chơi */
         .player-list { flex: 1; list-style: none; padding: 0; margin: 0; overflow-y: auto; }
         .player-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.5); margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #fff; }
         .player-color { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; border: 2px solid #fff; }
-
-        /* Bảng Chat Lobby */
+        
+        /* Chat */
         .chat-box { flex: 1; display: flex; flex-direction: column; height: 100%; }
         .chat-messages { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px;}
         .chat-msg { padding: 5px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; }
         .chat-sys { color: #888; font-style: italic; }
         .chat-input-row { display: flex; gap: 10px; }
-        .chat-input-row input { flex: 1; margin: 0; padding: 10px; width: auto; font-size: 14px; }
-        .chat-input-row button { margin: 0; width: 80px; font-size: 14px; padding: 10px; }
+        .chat-input-row input { flex: 1; margin: 0; padding: 10px; font-size: 14px; }
+        .chat-input-row button { margin: 0; width: 80px; padding: 10px; }
 
-        /* Màn hình Game In-Play */
+        /* In-Game UI */
         #gameUI { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; display: none; }
         .top-bar { position: absolute; top: 20px; left: 20px; display: flex; justify-content: space-between; width: calc(100% - 40px); pointer-events: auto; }
         #roomCodeDisplay { font-size: 20px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333;}
         #btnLeave { padding: 5px 15px; width: auto; margin: 0; font-size: 16px; pointer-events: auto; }
-        
-        /* Bảng Chữ Mục Tiêu (Alphabet Target) */
-        #targetBoard {
-            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-            font-size: 80px; font-weight: bold; color: #fff;
-            background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: 0.3s;
-        }
-
+        #targetBoard { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 80px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: 0.3s; }
         #statusText { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; color: #ff0000; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 20px #ff0000; display: none; z-index: 90;}
-        
-        /* Chat Trong Game */
-        #inGameChatContainer {
-            position: absolute; bottom: 20px; left: 20px; width: 350px; background: rgba(0,0,0,0.4); border-radius: 5px;
-            display: flex; flex-direction: column; pointer-events: auto; border: 1px solid #333;
-        }
+        #inGameChatContainer { position: absolute; bottom: 20px; left: 20px; width: 350px; background: rgba(0,0,0,0.4); border-radius: 5px; display: flex; flex-direction: column; pointer-events: auto; border: 1px solid #333; }
         #inGameChatMessages { height: 150px; overflow-y: auto; padding: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px; }
-        #inGameChatInput { margin: 0; width: 100%; padding: 10px; font-size: 14px; border: none; border-top: 1px solid #444; border-radius: 0 0 5px 5px; box-sizing: border-box; }
+        #inGameChatInput { margin: 0; width: 100%; padding: 10px; font-size: 14px; border: none; border-top: 1px solid #444; border-radius: 0 0 5px 5px; box-sizing: border-box; background: rgba(0,0,0,0.8); color: #fff; }
 
-        /* Bảng Điểm K/D */
         #scoreboard { display: flex; flex-direction: column; width: 80%; max-width: 600px; }
         .score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 5px; border-radius: 5px; font-size: 20px;}
         .score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; }
-
-        /* Ẩn hiện phần tử */
-        .hidden { display: none !important; }
     </style>
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js](https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js)"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <!-- PHẦN 2: CÁC MÀN HÌNH HTML -->
-
-    <!-- Trang chủ (Welcome) -->
-    <div id="welcomeScreen">
-        <h1>Machine Party</h1>
-        <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
-        <button class="btn" id="btnQuickJoin">VÀO PHÒNG TOÀN CẦU</button>
-        <div style="margin: 20px 0; color: #555;">HOẶC</div>
-        <input type="text" id="inputRoomCode" placeholder="Nhập mã phòng (ví dụ: ABC12)" maxlength="6">
-        <button class="btn" id="btnJoinRoom">VÀO PHÒNG RIÊNG</button>
+    <!-- 1. Màn hình Chờ Khởi Tạo -->
+    <div id="loadingScreen" class="screen">
+        <h1>MACHINE PARTY</h1>
+        <div class="subtitle">ĐANG KẾT NỐI MÁY CHỦ...</div>
     </div>
 
-    <!-- Sảnh Chờ (Lobby) -->
-    <div id="lobbyScreen" class="hidden">
-        <h1>SẢNH CHỜ</h1>
+    <!-- 2. Màn hình Main Menu -->
+    <div id="mainMenuScreen" class="screen hidden">
+        <h1>MACHINE PARTY</h1>
+        <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
+        <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
+        <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
+    </div>
+
+    <!-- 3. Màn hình Tạo Phòng -->
+    <div id="createRoomScreen" class="screen hidden">
+        <h1>TẠO PHÒNG</h1>
+        
+        <div class="form-group">
+            <label>Tên phòng</label>
+            <input type="text" id="crRoomName" placeholder="Nhập tên phòng..." maxlength="20">
+        </div>
+        
+        <div class="form-group">
+            <label>Số lượng người chơi tối đa (2-8)</label>
+            <input type="number" id="crMaxPlayers" min="2" max="8" value="8">
+        </div>
+
+        <div class="form-group">
+            <label>Chế độ phòng</label>
+            <select id="crPrivacy">
+                <option value="public">Tự do (Không cần mật khẩu)</option>
+                <option value="private">Riêng tư (Cần mật khẩu)</option>
+            </select>
+        </div>
+
+        <div class="form-group hidden" id="crPasswordGroup">
+            <label>Mật khẩu</label>
+            <input type="text" id="crPassword" placeholder="Nhập mật khẩu..." maxlength="15">
+        </div>
+
+        <button class="btn" id="btnCreateRoomSubmit">TẠO VÀ VÀO PHÒNG</button>
+        <button class="btn btn-secondary" id="btnBackFromCreate">QUAY LẠI</button>
+    </div>
+
+    <!-- 4. Màn hình Tìm Phòng (Server Browser) -->
+    <div id="joinRoomScreen" class="screen hidden">
+        <h1>DANH SÁCH PHÒNG</h1>
+        <div class="room-browser" id="roomListUI">
+            <!-- Dữ liệu phòng sẽ được chèn vào đây -->
+            <div style="text-align: center; color: #888; margin-top: 20px;">Đang tải danh sách...</div>
+        </div>
+        <button class="btn btn-secondary" id="btnBackFromJoin">QUAY LẠI</button>
+    </div>
+
+    <!-- 5. Sảnh Chờ (Lobby) -->
+    <div id="lobbyScreen" class="screen hidden">
+        <h1 id="lobbyTitle">SẢNH CHỜ</h1>
         <div class="subtitle" id="lobbyRoomDisplay">PHÒNG: ĐANG TẢI...</div>
         
         <div class="lobby-container">
             <div class="panel" style="flex: 1;">
-                <div class="panel-title">NGƯỜI CHƠI (Tối đa 8)</div>
+                <div class="panel-title" id="lobbyPlayerCountTitle">NGƯỜI CHƠI (0/8)</div>
                 <ul class="player-list" id="playerListUI"></ul>
-                <button class="btn" id="btnStartGame" style="width:100%; margin: 15px 0 0 0;">BẮT ĐẦU GAME</button>
+                <button class="btn" id="btnStartGame" style="width:100%; margin: 15px 0 0 0; display: none;">BẮT ĐẦU GAME</button>
                 <button class="btn btn-danger" id="btnExitLobby" style="width:100%; margin: 10px 0 0 0;">THOÁT PHÒNG</button>
             </div>
             
@@ -130,39 +165,35 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         </div>
     </div>
 
-    <!-- Màn hình kết thúc game -->
-    <div id="gameOverScreen" class="hidden">
+    <!-- 6. Màn hình Kết Thúc -->
+    <div id="gameOverScreen" class="screen hidden">
         <h1 style="font-size: 80px;">KẾT THÚC</h1>
         <div class="subtitle" id="winnerAnnouncement">Chờ thống kê...</div>
         <div id="scoreboard"></div>
-        <button class="btn" id="btnReturnLobby" style="margin-top: 40px;">QUAY LẠI SẢNH CHỜ</button>
+        <button class="btn" id="btnReturnLobby" style="margin-top: 40px; display: none;">QUAY LẠI SẢNH CHỜ</button>
+        <div class="subtitle" id="waitingHostText" style="margin-top: 20px;">Đang chờ chủ phòng...</div>
     </div>
 
-    <!-- Giao diện lúc đang chơi (Game UI) -->
+    <!-- 7. Giao diện In-Game UI -->
     <div id="gameUI">
         <div class="top-bar">
-            <div id="roomCodeDisplay">Phòng: GLOBAL</div>
+            <div id="roomCodeDisplay">Phòng: ???</div>
             <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
         </div>
-        
-        <!-- Bảng hiển thị chữ an toàn -->
         <div id="targetBoard">?</div>
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
-
-        <!-- Khung Chat Trong Game -->
         <div id="inGameChatContainer">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">
         </div>
     </div>
 
-    <!-- PHẦN 3: LOGIC TRÒ CHƠI & FIREBASE -->
     <script type="module">
-        import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js)";
-        import { getAuth, signInAnonymously } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js)";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js)";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // CẤU HÌNH FIREBASE CỦA BẠN (GIỮ NGUYÊN)
+        // Cấu hình Firebase
         const myFirebaseConfig = {
             apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
             authDomain: "machine-fight.firebaseapp.com",
@@ -184,14 +215,15 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         let gameActive = false;
         let players = {};
         let hostGameLoop = null;
+        let roomMaxPlayers = 8;
 
-        // Trạng thái Server-Side (Đồng bộ)
+        // State Đồng Bộ Game
         let serverPhase = 'IDLE'; 
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
         let serverRound = 1;
 
-        // Trạng thái Client-Side
+        // State Local 3D
         let myPlayer = { x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
         const moveSpeed = 0.15;
         const keys = { w: false, a: false, s: false, d: false };
@@ -199,22 +231,22 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         const tileSize = 2;
         const lettersList = ['X', 'Y', 'Z'];
 
-        // Các UI Elements
-        const welcomeScreen = document.getElementById('welcomeScreen');
-        const lobbyScreen = document.getElementById('lobbyScreen');
-        const gameUI = document.getElementById('gameUI');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const playerListUI = document.getElementById('playerListUI');
-        const statusText = document.getElementById('statusText');
-        const targetBoard = document.getElementById('targetBoard');
-        
-        // Chat UI Elements
-        const lobbyChatMessages = document.getElementById('lobbyChatMessages');
-        const lobbyChatInput = document.getElementById('lobbyChatInput');
-        const inGameChatMessages = document.getElementById('inGameChatMessages');
-        const inGameChatInput = document.getElementById('inGameChatInput');
+        // CÁC MÀN HÌNH
+        const screens = {
+            loading: document.getElementById('loadingScreen'),
+            mainMenu: document.getElementById('mainMenuScreen'),
+            createRoom: document.getElementById('createRoomScreen'),
+            joinRoom: document.getElementById('joinRoomScreen'),
+            lobby: document.getElementById('lobbyScreen'),
+            gameOver: document.getElementById('gameOverScreen')
+        };
 
-        // ================= XÂY DỰNG THREE.JS & TEXTURE BẢNG CHỮ CÁI =================
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            if(screens[screenName]) screens[screenName].classList.remove('hidden');
+        }
+
+        // ================= KHỞI TẠO THREE.JS (Canvas mượt mà) =================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a0a);
         scene.fog = new THREE.Fog(0x0a0a0a, 15, 60);
@@ -234,39 +266,34 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         const spotLight = new THREE.SpotLight(0xfffaee, 1.5);
         spotLight.position.set(0, 30, 0); spotLight.castShadow = true; scene.add(spotLight);
 
-        // HÀM TẠO TEXTURE CHỮ CÁI THÔNG MINH BẰNG CANVAS
+        // Sinh Texture Canvas
         function createTileMaterial(letter, bgColorHex, textColorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = bgColorHex;
-            ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = bgColorHex; ctx.fillRect(0, 0, 256, 256);
             if (letter) {
-                ctx.fillStyle = textColorHex;
-                ctx.font = 'bold 150px Oswald, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(letter, 128, 128);
+                ctx.fillStyle = textColorHex; ctx.font = 'bold 150px Oswald, sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(letter, 128, 128);
             }
             const tex = new THREE.CanvasTexture(canvas);
-            tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // Chống mờ vân bề mặt góc nghiêng
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
             return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
         }
 
-        // Khởi tạo thư viện Vật liệu (Materials)
-        const matBlank = createTileMaterial('', '#444444', '#fff'); // Sàn trống
+        const matBlank = createTileMaterial('', '#444444', '#fff');
         const matsNormal = {
             'X': createTileMaterial('X', '#333333', '#ffffff'),
             'Y': createTileMaterial('Y', '#333333', '#ffffff'),
             'Z': createTileMaterial('Z', '#333333', '#ffffff')
         };
         const matsSafe = {
-            'X': createTileMaterial('X', '#222222', '#00ff00'), // Chữ xanh lá (An Toàn)
+            'X': createTileMaterial('X', '#222222', '#00ff00'),
             'Y': createTileMaterial('Y', '#222222', '#00ff00'),
             'Z': createTileMaterial('Z', '#222222', '#00ff00')
         };
         const matsDanger = {
-            'X': createTileMaterial('X', '#660000', '#ff3333'), // Nền đỏ, chữ đỏ (Nguy Hiểm)
+            'X': createTileMaterial('X', '#660000', '#ff3333'),
             'Y': createTileMaterial('Y', '#660000', '#ff3333'),
             'Z': createTileMaterial('Z', '#660000', '#ff3333')
         };
@@ -275,87 +302,201 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         const floorGroup = new THREE.Group();
         const tileGeo = new THREE.BoxGeometry(tileSize * 0.9, 0.5, tileSize * 0.9);
 
-        // Xây dựng lưới 9x9
         for (let x = 0; x < gridSize; x++) {
             for (let z = 0; z < gridSize; z++) {
                 const mesh = new THREE.Mesh(tileGeo, matBlank);
                 mesh.position.set((x - Math.floor(gridSize/2)) * tileSize, -0.25, (z - Math.floor(gridSize/2)) * tileSize);
                 mesh.receiveShadow = true;
-                // userData lưu tọa độ Y mục tiêu để lerp mượt mà
-                mesh.userData = { targetY: -0.25, isDanger: false, currentLetter: '' };
+                mesh.userData = { targetY: -0.25, isDanger: false };
                 floorGroup.add(mesh);
                 tiles.push(mesh);
             }
         }
         scene.add(floorGroup);
-
         const playerMeshes = {};
 
-        // ================= KẾT NỐI FIREBASE & QUẢN LÝ PHÒNG =================
+        // ================= FIREBASE AUTH & UI ĐIỀU HƯỚNG =================
         signInAnonymously(auth).then((userCred) => {
             myId = userCred.user.uid;
-            console.log("Đã đăng nhập ẩn danh:", myId);
-        }).catch(err => alert("Lỗi Firebase Auth: " + err.message));
+            showScreen('mainMenu');
+        }).catch(err => alert("Lỗi kết nối máy chủ: " + err.message));
 
-        async function joinRoom(roomId) {
-            if (!myId) return alert("Chưa tải xong cấu hình mạng!");
-            currentRoomId = roomId.toUpperCase();
-            document.getElementById('lobbyRoomDisplay').innerText = `PHÒNG: ${currentRoomId}`;
-            welcomeScreen.classList.add('hidden');
-            lobbyScreen.classList.remove('hidden');
+        // Nút Main Menu
+        document.getElementById('navCreateRoom').onclick = () => {
+            document.getElementById('crRoomName').value = `Phòng của ${myId.substring(0,4)}`;
+            showScreen('createRoom');
+        };
+        document.getElementById('navJoinRoom').onclick = () => {
+            showScreen('joinRoom');
+            listenToRoomList();
+        };
 
+        // UI Tạo Phòng
+        document.getElementById('crPrivacy').onchange = (e) => {
+            document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public');
+        };
+        document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
+        document.getElementById('btnBackFromJoin').onclick = () => {
+            if(unsubscribeRoomList) unsubscribeRoomList();
+            showScreen('mainMenu');
+        };
+
+        // ================= XỬ LÝ: TẠO PHÒNG =================
+        document.getElementById('btnCreateRoomSubmit').onclick = async () => {
+            const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
+            let maxP = parseInt(document.getElementById('crMaxPlayers').value);
+            if (isNaN(maxP) || maxP < 2 || maxP > 8) maxP = 8;
+            const isPrivate = document.getElementById('crPrivacy').value === 'private';
+            const pass = document.getElementById('crPassword').value.trim();
+
+            if (isPrivate && pass === "") return alert("Vui lòng nhập mật khẩu cho phòng riêng tư!");
+
+            // Random Room ID 6 ký tự
+            const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
             const myColor = Math.floor(Math.random()*16777215);
-            myPlayer.color = myColor;
-            myPlayer.score = 0;
-            myPlayer.kills = 0;
-            myPlayer.isAlive = true;
-
-            await updateDoc(doc(db, "rooms", currentRoomId), {
-                [`players.${myId}`]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 }
-            }).catch(async (e) => {
-                // Tạo phòng mới nếu chưa có
-                isHost = true;
-                await setDoc(doc(db, "rooms", currentRoomId), {
-                    status: 'LOBBY', hostId: myId,
+            
+            try {
+                await setDoc(doc(db, "rooms", newRoomId), {
+                    roomName: name,
+                    maxPlayers: maxP,
+                    isPrivate: isPrivate,
+                    password: pass,
+                    status: 'LOBBY', 
+                    hostId: myId,
                     gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], round: 1 },
                     players: { [myId]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
-                document.getElementById('btnStartGame').style.display = 'block';
-            });
+                enterLobby(newRoomId, name, true, maxP);
+            } catch (error) {
+                alert("Lỗi khi tạo phòng: " + error.message);
+            }
+        };
 
-            if (!isHost) document.getElementById('btnStartGame').style.display = 'none';
-            listenToRoom();
+        // ================= XỬ LÝ: DANH SÁCH PHÒNG =================
+        let unsubscribeRoomList = null;
+        function listenToRoomList() {
+            const roomListUI = document.getElementById('roomListUI');
+            roomListUI.innerHTML = '<div style="text-align:center; color:#888;">Đang quét máy chủ...</div>';
+
+            unsubscribeRoomList = onSnapshot(collection(db, "rooms"), (snapshot) => {
+                roomListUI.innerHTML = '';
+                if (snapshot.empty) {
+                    roomListUI.innerHTML = '<div style="text-align:center; color:#888;">Chưa có phòng nào được tạo.</div>';
+                    return;
+                }
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const rId = docSnap.id;
+                    const pCount = data.players ? Object.keys(data.players).length : 0;
+                    
+                    const isPlaying = data.status !== 'LOBBY';
+                    const statusText = isPlaying ? `<span style="color:#ff3333;">Đang chơi</span>` : `<span style="color:#00ff00;">Phòng chờ</span>`;
+                    const lockIcon = data.isPrivate ? '🔒 ' : '🔓 ';
+
+                    const row = document.createElement('div');
+                    row.className = `room-row ${isPlaying ? 'playing' : ''}`;
+                    row.innerHTML = `
+                        <div class="room-info">
+                            <div class="room-name">${lockIcon}${data.roomName} (ID: ${rId})</div>
+                            <div class="room-details">
+                                <span>Người chơi: ${pCount}/${data.maxPlayers}</span>
+                                <span>Trạng thái: ${statusText}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-join" ${isPlaying || pCount >= data.maxPlayers ? 'disabled style="background:#555;"' : ''}>
+                            VÀO PHÒNG
+                        </button>
+                    `;
+
+                    // Gắn sự kiện click
+                    const joinBtn = row.querySelector('.btn-join');
+                    if (!isPlaying && pCount < data.maxPlayers) {
+                        joinBtn.onclick = () => attemptJoinRoom(rId, data);
+                    }
+
+                    roomListUI.appendChild(row);
+                });
+            });
+        }
+
+        async function attemptJoinRoom(rId, roomData) {
+            if (roomData.isPrivate) {
+                const inputPass = prompt("Phòng này là phòng riêng tư. Nhập mật khẩu:");
+                if (inputPass === null) return; // Bấm Hủy
+                if (inputPass !== roomData.password) return alert("Mật khẩu không chính xác!");
+            }
+
+            // Tiến hành Join
+            const myColor = Math.floor(Math.random()*16777215);
+            try {
+                await updateDoc(doc(db, "rooms", rId), {
+                    [`players.${myId}`]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 }
+                });
+                if(unsubscribeRoomList) unsubscribeRoomList();
+                enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
+            } catch (error) {
+                alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy.");
+            }
+        }
+
+        // ================= VÀO LOBBY VÀ LẮNG NGHE ĐỒNG BỘ =================
+        let unsubscribeRoom = null;
+        let unsubscribeChat = null;
+
+        function enterLobby(rId, rName, amIHost, maxP) {
+            currentRoomId = rId;
+            isHost = amIHost;
+            roomMaxPlayers = maxP;
+            
+            myPlayer.score = 0; myPlayer.isAlive = true;
+
+            document.getElementById('lobbyTitle').innerText = rName;
+            document.getElementById('lobbyRoomDisplay').innerText = `ID PHÒNG: ${rId}`;
+            showScreen('lobby');
+
+            if (isHost) document.getElementById('btnStartGame').style.display = 'block';
+            else document.getElementById('btnStartGame').style.display = 'none';
+
+            // Bắt đầu lắng nghe
+            listenToCurrentRoom();
             listenToChat();
             sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã tham gia.`);
         }
 
-        // Lắng nghe dữ liệu phòng thời gian thực
-        let unsubscribeRoom = null;
-        let unsubscribeChat = null;
-
-        function listenToRoom() {
+        function listenToCurrentRoom() {
             unsubscribeRoom = onSnapshot(doc(db, "rooms", currentRoomId), (docSnap) => {
-                if (!docSnap.exists()) return forceLeaveRoom();
+                if (!docSnap.exists()) return forceLeaveRoom("Phòng đã bị chủ phòng đóng!");
                 const data = docSnap.data();
                 
-                // Đồng bộ Host mới nếu Host cũ thoát
-                if (data.hostId === myId) { isHost = true; document.getElementById('btnStartGame').style.display = 'block'; }
+                // Đồng bộ Host
+                if (data.hostId === myId) { 
+                    isHost = true; 
+                    document.getElementById('btnStartGame').style.display = 'block';
+                    document.getElementById('btnReturnLobby').style.display = 'block';
+                    document.getElementById('waitingHostText').style.display = 'none';
+                } else {
+                    document.getElementById('btnReturnLobby').style.display = 'none';
+                    document.getElementById('waitingHostText').style.display = 'block';
+                }
                 
-                // Đồng bộ người chơi
                 players = data.players || {};
+                const pCount = Object.keys(players).length;
+                document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${pCount}/${data.maxPlayers})`;
+                
                 updateLobbyUI();
                 sync3DPlayers();
 
                 // Chuyển Trạng thái Game
-                if (data.status === 'PLAYING' && !gameActive) {
-                    startGameClient();
-                } else if (data.status === 'LOBBY' && gameActive) {
+                if (data.status === 'PLAYING' && !gameActive) startGameClient(data.roomName);
+                else if (data.status === 'LOBBY' && gameActive) stopGameClient();
+                else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) {
+                    // Host bấm quay lại sảnh từ GameOver
                     stopGameClient();
-                } else if (data.status === 'GAMEOVER') {
-                    showGameOver();
                 }
+                else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
-                // Cập nhật State Logic (Các pha của game)
+                // Cập nhật State Logic in-game
                 if (data.status === 'PLAYING' && data.gameState) {
                     const state = data.gameState;
                     let oldPhase = serverPhase;
@@ -365,16 +506,16 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
                     serverSafeTiles = state.safeTiles || [];
                     serverRound = state.round || 1;
 
-                    // Tính điểm K/D cá nhân: Được +10đ mỗi khi thoát bẫy thành công (DROP -> IDLE)
+                    // Tính điểm K/D
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
                         myPlayer.score += 10;
-                        uploadMyPosition(); // Push score lên server
+                        uploadMyPosition(); 
                     }
                 }
             });
         }
 
-        // Hệ thống Chat
+        // ================= HỆ THỐNG CHAT =================
         function listenToChat() {
             const q = query(collection(db, "rooms", currentRoomId, "chat"), orderBy("time", "desc"), limit(20));
             unsubscribeChat = onSnapshot(q, (snap) => {
@@ -382,13 +523,12 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
                 snap.forEach(doc => msgs.push(doc.data()));
                 msgs.reverse();
                 
-                // Render chung cho cả Lobby Chat và In-Game Chat
                 let htmlStr = msgs.map(m => m.sys ? `<div class="chat-msg chat-sys">${m.text}</div>` : `<div class="chat-msg"><b>${m.sender}:</b> ${m.text}</div>`).join('');
-                lobbyChatMessages.innerHTML = htmlStr;
-                inGameChatMessages.innerHTML = htmlStr;
+                document.getElementById('lobbyChatMessages').innerHTML = htmlStr;
+                document.getElementById('inGameChatMessages').innerHTML = htmlStr;
                 
-                lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
-                inGameChatMessages.scrollTop = inGameChatMessages.scrollHeight;
+                document.getElementById('lobbyChatMessages').scrollTop = document.getElementById('lobbyChatMessages').scrollHeight;
+                document.getElementById('inGameChatMessages').scrollTop = document.getElementById('inGameChatMessages').scrollHeight;
             });
         }
 
@@ -400,39 +540,26 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         }
         const sendSystemMessage = (t) => sendMessage(t, true);
 
-        // ================= GIAO DIỆN & NÚT BẤM =================
-        document.getElementById('btnQuickJoin').onclick = () => joinRoom("GLOBAL");
-        document.getElementById('btnJoinRoom').onclick = () => {
-            const code = document.getElementById('inputRoomCode').value;
-            if (code.length >= 3) joinRoom(code); else alert("Mã phòng tối thiểu 3 ký tự!");
-        };
-        
-        // Chat Submit
-        document.getElementById('btnSendLobbyChat').onclick = () => { sendMessage(lobbyChatInput.value); lobbyChatInput.value = ''; };
-        lobbyChatInput.onkeypress = (e) => { if(e.key === 'Enter') document.getElementById('btnSendLobbyChat').click(); };
+        document.getElementById('btnSendLobbyChat').onclick = () => { sendMessage(document.getElementById('lobbyChatInput').value); document.getElementById('lobbyChatInput').value = ''; };
+        document.getElementById('lobbyChatInput').onkeypress = (e) => { if(e.key === 'Enter') document.getElementById('btnSendLobbyChat').click(); };
 
-        // Xử lý Input Chat Trong Game (Khóa di chuyển)
+        const inGameChatInput = document.getElementById('inGameChatInput');
         window.addEventListener('keydown', (e) => {
-            // Nếu đang gõ chat thì không nhận lệnh di chuyển
             if (document.activeElement === inGameChatInput) {
                 if (e.key === 'Enter') { sendMessage(inGameChatInput.value); inGameChatInput.value = ''; inGameChatInput.blur(); }
                 return;
             }
-            // Nếu ấn Enter ngoài màn hình, nhảy vào thanh chat
-            if (e.key === 'Enter' && gameActive) {
-                inGameChatInput.focus();
-                return;
-            }
+            if (e.key === 'Enter' && gameActive) { inGameChatInput.focus(); return; }
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true;
         });
         window.addEventListener('keyup', (e) => {
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
         });
 
-        // ================= LOGIC GAME SERVER (HOST QUẢN LÝ) =================
+        // ================= LOGIC HOST (SERVER-SIDE) =================
         document.getElementById('btnStartGame').onclick = async () => {
             await updateDoc(doc(db, "rooms", currentRoomId), { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 });
-            startHostLoop(); // Bật bộ đếm giờ
+            startHostLoop(); 
         };
 
         function startHostLoop() {
@@ -454,7 +581,6 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
                 }
                 else if (serverPhase === 'SHUFFLING_FLOOR' && phaseTime >= 4) {
                     serverPhase = 'LOCKED'; phaseTime = 0;
-                    // Chọn số lượng ô an toàn (giảm dần theo round)
                     let safeCount = Math.max(1, 20 - (serverRound * 3));
                     let allIndices = Array.from({length: 81}, (_, i) => i);
                     let safeArr = [];
@@ -470,16 +596,13 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase });
                 }
                 else if (serverPhase === 'DROP' && phaseTime >= 3) {
-                    // Kiểm tra xem còn ai sống không
                     let aliveCount = Object.values(players).filter(p => p.isAlive).length;
                     let totalPlayers = Object.keys(players).length;
                     
                     if (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1)) {
-                        // KẾT THÚC
                         clearInterval(hostGameLoop);
                         await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
                     } else {
-                        // Vòng tiếp theo
                         serverPhase = 'IDLE'; phaseTime = 0; serverRound++;
                         await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.round": serverRound });
                     }
@@ -487,54 +610,70 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
             }, 1000);
         }
 
-        // ================= CLIENT XỬ LÝ HÌNH ẢNH & HIỆU ỨNG =================
-        function startGameClient() {
-            lobbyScreen.classList.add('hidden');
-            gameUI.style.display = 'block';
-            document.getElementById('roomCodeDisplay').innerText = `Phòng: ${currentRoomId}`;
+        // ================= CLIENT XỬ LÝ HÌNH ẢNH & THOÁT =================
+        function startGameClient(roomName) {
+            showScreen(''); // Ẩn hết UI HTML
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('roomCodeDisplay').innerText = `Phòng: ${roomName}`;
             gameActive = true;
-            statusText.style.display = 'none';
+            document.getElementById('statusText').style.display = 'none';
 
-            // Random Spawn
             myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
             myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
             myPlayer.isAlive = true;
             
-            camera.position.set(20, 30, 20);
-            camera.lookAt(scene.position);
+            camera.position.set(20, 30, 20); camera.lookAt(scene.position);
         }
 
         function stopGameClient() {
             gameActive = false;
-            gameUI.style.display = 'none';
-            gameOverScreen.classList.add('hidden');
-            lobbyScreen.classList.remove('hidden');
+            document.getElementById('gameUI').style.display = 'none';
             if (hostGameLoop) clearInterval(hostGameLoop);
+            showScreen('lobby'); // Quay lại sảnh
         }
 
-        async function forceLeaveRoom() {
-            stopGameClient();
-            welcomeScreen.classList.remove('hidden');
-            lobbyScreen.classList.add('hidden');
+        async function forceLeaveRoom(reason = "") {
+            if(reason) alert(reason);
+            gameActive = false;
+            document.getElementById('gameUI').style.display = 'none';
+            if (hostGameLoop) clearInterval(hostGameLoop);
+            
+            showScreen('mainMenu');
             if (unsubscribeRoom) unsubscribeRoom();
             if (unsubscribeChat) unsubscribeChat();
+
             if (currentRoomId) {
                 sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã thoát.`);
-                await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
+                const pCount = Object.keys(players).length;
+                if (pCount <= 1 && isHost) {
+                    // Nếu là người cuối cùng, xóa phòng
+                    await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
+                } else {
+                    // Xóa bản thân khỏi danh sách
+                    await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
+                    // Nếu là Host, random người khác làm host
+                    if (isHost) {
+                        const remainingIds = Object.keys(players).filter(id => id !== myId);
+                        if (remainingIds.length > 0) {
+                            await updateDoc(doc(db, "rooms", currentRoomId), { hostId: remainingIds[0], [`players.${remainingIds[0]}.isHost`]: true });
+                        }
+                    }
+                }
             }
-            currentRoomId = null;
+            currentRoomId = null; isHost = false;
         }
 
-        document.getElementById('btnExitLobby').onclick = forceLeaveRoom;
-        document.getElementById('btnLeave').onclick = forceLeaveRoom;
+        document.getElementById('btnExitLobby').onclick = () => forceLeaveRoom();
+        document.getElementById('btnLeave').onclick = () => forceLeaveRoom();
+        
         document.getElementById('btnReturnLobby').onclick = async () => {
             if (isHost) await updateDoc(doc(db, "rooms", currentRoomId), { status: 'LOBBY' });
         };
 
         function showGameOver() {
             gameActive = false;
-            gameUI.style.display = 'none';
-            gameOverScreen.classList.remove('hidden');
+            document.getElementById('gameUI').style.display = 'none';
+            showScreen('gameOver');
 
             let arr = Object.keys(players).map(k => ({ id: k, ...players[k] }));
             arr.sort((a,b) => b.score - a.score);
@@ -552,13 +691,14 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         }
 
         function updateLobbyUI() {
-            playerListUI.innerHTML = '';
+            const listUI = document.getElementById('playerListUI');
+            listUI.innerHTML = '';
             for (let uid in players) {
                 const p = players[uid];
                 const hexColor = '#' + p.color.toString(16).padStart(6, '0');
                 const hostTag = p.isHost ? ' 👑(Chủ)' : '';
                 const meTag = uid === myId ? ' (Bạn)' : '';
-                playerListUI.innerHTML += `<li class="player-item">
+                listUI.innerHTML += `<li class="player-item">
                     <div class="player-color" style="background: ${hexColor}"></div>
                     <div>${uid.substring(0,6)}${meTag}${hostTag}</div>
                 </li>`;
@@ -566,11 +706,7 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
         }
 
         function sync3DPlayers() {
-            // Xóa người cũ
-            for (let id in playerMeshes) {
-                if (!players[id]) { scene.remove(playerMeshes[id]); delete playerMeshes[id]; }
-            }
-            // Cập nhật/Tạo mới
+            for (let id in playerMeshes) if (!players[id]) { scene.remove(playerMeshes[id]); delete playerMeshes[id]; }
             for (let id in players) {
                 if (id === myId) continue;
                 const pData = players[id];
@@ -578,8 +714,7 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
                     const geo = new THREE.BoxGeometry(1, 1, 1);
                     const mat = new THREE.MeshStandardMaterial({ color: pData.color });
                     const mesh = new THREE.Mesh(geo, mat);
-                    mesh.castShadow = true;
-                    scene.add(mesh);
+                    mesh.castShadow = true; scene.add(mesh);
                     playerMeshes[id] = mesh;
                 }
                 playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.1);
@@ -588,60 +723,45 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
             }
         }
 
-        // ================= VÒNG LẶP CHÍNH (RENDER LOOP) =================
+        // ================= RENDER LOOP (THREE.JS) =================
         let frameCount = 0;
-        
         function animate() {
             requestAnimationFrame(animate);
             frameCount++;
 
             if (gameActive) {
-                // 1. Logic Bản đồ & Hiệu ứng Chữ theo các Pha
-                targetBoard.innerText = serverPhase === 'IDLE' ? `VÒNG ${serverRound}` : serverTargetLetter;
+                const tb = document.getElementById('targetBoard');
+                tb.innerText = serverPhase === 'IDLE' ? `VÒNG ${serverRound}` : serverTargetLetter;
                 
-                if (serverPhase === 'IDLE') targetBoard.style.borderColor = '#444';
+                if (serverPhase === 'IDLE') tb.style.borderColor = '#444';
                 else if (serverPhase === 'ROLLING_TARGET') {
-                    if (frameCount % 5 === 0) targetBoard.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
-                    targetBoard.style.borderColor = '#00aaff';
+                    if (frameCount % 5 === 0) tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
+                    tb.style.borderColor = '#00aaff';
                 }
-                else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') targetBoard.style.borderColor = '#00ff00';
+                else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
 
                 tiles.forEach((tile, index) => {
                     if (serverPhase === 'IDLE' || serverPhase === 'ROLLING_TARGET') {
-                        tile.userData.targetY = -0.25;
-                        tile.material = matBlank;
-                        tile.userData.isDanger = false;
+                        tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
                     } 
                     else if (serverPhase === 'SHUFFLING_FLOOR') {
                         tile.userData.targetY = -0.25;
-                        // Nháy chữ loạn xạ liên tục (màu trắng đen bình thường)
-                        if (frameCount % 10 === 0) {
-                            let rl = lettersList[Math.floor(Math.random()*lettersList.length)];
-                            tile.material = matsNormal[rl];
-                        }
+                        if (frameCount % 10 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
                     }
                     else if (serverPhase === 'LOCKED') {
-                        // Thiết lập cố định ô an toàn và nguy hiểm
                         if (serverSafeTiles.includes(index)) {
-                            tile.material = matsSafe[serverTargetLetter]; // Chữ xanh
-                            tile.userData.isDanger = false;
+                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
                         } else {
-                            // Tạo ngẫu nhiên chữ sai màu đỏ
-                            let wLetters = lettersList.filter(l => l !== serverTargetLetter);
-                            let wl = wLetters[Math.floor(Math.random()*wLetters.length)];
-                            tile.material = matsDanger[wl];
-                            tile.userData.isDanger = true;
+                            let wl = lettersList.filter(l => l !== serverTargetLetter)[Math.floor(Math.random()*2)];
+                            tile.material = matsDanger[wl]; tile.userData.isDanger = true;
                         }
                     }
-                    else if (serverPhase === 'DROP') {
-                        if (tile.userData.isDanger) tile.userData.targetY = -2.5; // Thụt hố
+                    else if (serverPhase === 'DROP' && tile.userData.isDanger) {
+                        tile.userData.targetY = -2.5; 
                     }
-
-                    // Lerp vị trí sàn mượt mà
                     tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
                 });
 
-                // 2. Di chuyển Bản thân (Nếu còn sống & không focus vào khung chat)
                 if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
                     if (keys.w) myPlayer.x -= moveSpeed;
                     if (keys.s) myPlayer.x += moveSpeed;
@@ -652,77 +772,58 @@ Dưới đây là mã nguồn HTML hoàn chỉnh chứa cả 3 phần (CSS, HTML
                     myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
                     myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
 
-                    // Kiểm tra rơi hố liên tục
-                    checkDeath();
-                    uploadMyPosition();
+                    checkDeath(); uploadMyPosition();
                 }
 
-                // Vẽ Bản thân
                 if (!playerMeshes[myId]) {
-                    const geo = new THREE.BoxGeometry(1, 1, 1);
-                    const mat = new THREE.MeshStandardMaterial({ color: myPlayer.color });
-                    playerMeshes[myId] = new THREE.Mesh(geo, mat);
-                    playerMeshes[myId].castShadow = true;
-                    scene.add(playerMeshes[myId]);
+                    playerMeshes[myId] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: myPlayer.color }));
+                    playerMeshes[myId].castShadow = true; scene.add(playerMeshes[myId]);
                 }
                 playerMeshes[myId].position.x = myPlayer.x;
                 playerMeshes[myId].position.z = myPlayer.z;
                 
-                // Camera đi theo người chơi hoặc bay lên làm khán giả nếu chết
                 if (myPlayer.isAlive) {
                     playerMeshes[myId].position.y = 0.5;
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
                 } else {
                     playerMeshes[myId].position.y = -2; 
-                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 40, 0.02); // Bay lên cao xem xét
+                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 40, 0.02); 
                 }
             }
-
             renderer.render(scene, camera);
         }
 
-        // Kiểm tra rơi xuống hố
         function checkDeath() {
             if (!myPlayer.isAlive) return;
-            let closestTile = null;
-            let minDist = Infinity;
-            
+            let closestTile = null; let minDist = Infinity;
             tiles.forEach(tile => {
                 const dist = new THREE.Vector3(myPlayer.x, 0.5, myPlayer.z).distanceTo(new THREE.Vector3(tile.position.x, 0.5, tile.position.z));
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
-
-            // Nếu ô dưới chân thụt xuống
             if (closestTile && closestTile.position.y < -1) {
                 myPlayer.isAlive = false;
-                
-                // Hiệu ứng "BẠN ĐÃ ƯỚT" trong 1 giây
-                statusText.style.display = 'block';
-                setTimeout(() => { statusText.style.display = 'none'; }, 1000);
+                const st = document.getElementById('statusText');
+                st.style.display = 'block'; setTimeout(() => { st.style.display = 'none'; }, 1000);
             }
         }
 
         let lastUpdate = 0;
         async function uploadMyPosition() {
             let now = Date.now();
-            if (now - lastUpdate > 100) { // Push 10 lần/s
+            if (now - lastUpdate > 100) { 
                 lastUpdate = now;
                 await updateDoc(doc(db, "rooms", currentRoomId), {
-                    [`players.${myId}.x`]: myPlayer.x,
-                    [`players.${myId}.z`]: myPlayer.z,
-                    [`players.${myId}.isAlive`]: myPlayer.isAlive,
-                    [`players.${myId}.score`]: myPlayer.score
-                }).catch(e=>{});
+                    [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
+                    [`players.${myId}.isAlive`]: myPlayer.isAlive, [`players.${myId}.score`]: myPlayer.score
+                }).catch(()=>{});
             }
         }
 
-        // Responsive
         window.addEventListener('resize', () => {
             const aspect = window.innerWidth / window.innerHeight;
             camera.left = -d * aspect; camera.right = d * aspect; camera.top = d; camera.bottom = -d;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         animate();
