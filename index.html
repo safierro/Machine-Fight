@@ -149,7 +149,6 @@
         </div>
     </div>
 
-    <!-- Màn Hình Kết Thúc (Game Over + Scoreboard) -->
     <div id="gameOverScreen" class="screen hidden">
         <h1 style="font-size: 80px;">KẾT THÚC</h1>
         <div class="subtitle" id="winnerAnnouncement">Chờ thống kê...</div>
@@ -174,7 +173,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const myFirebaseConfig = {
             apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
@@ -200,10 +199,12 @@
         let serverPhase = 'IDLE'; 
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
+        let serverDangerLetters = {}; // Lưu trữ cố định chữ sai cho từng ô khi sập bẫy
         let serverRound = 1;
 
+        // GIẢM TỐC ĐỘ DI CHUYỂN
         let myPlayer = { x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
-        const moveSpeed = 0.15;
+        const moveSpeed = 0.08; 
         const keys = { w: false, a: false, s: false, d: false };
         const gridSize = 9;
         const tileSize = 2;
@@ -299,19 +300,10 @@
             document.getElementById('crRoomName').value = `Phòng của ${myId.substring(0,4)}`;
             showScreen('createRoom');
         };
-        document.getElementById('navJoinRoom').onclick = () => {
-            showScreen('joinRoom');
-            listenToRoomList();
-        };
-
-        document.getElementById('crPrivacy').onchange = (e) => {
-            document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public');
-        };
+        document.getElementById('navJoinRoom').onclick = () => { showScreen('joinRoom'); listenToRoomList(); };
+        document.getElementById('crPrivacy').onchange = (e) => { document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public'); };
         document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
-        document.getElementById('btnBackFromJoin').onclick = () => {
-            if(unsubscribeRoomList) unsubscribeRoomList();
-            showScreen('mainMenu');
-        };
+        document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
         // --- TẠO PHÒNG ---
         document.getElementById('btnCreateRoomSubmit').onclick = async () => {
@@ -328,7 +320,7 @@
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
-                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], round: 1 },
+                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, round: 1 },
                     players: { [myId]: { x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
@@ -412,7 +404,6 @@
                 
                 players = data.players || {};
                 document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${Object.keys(players).length}/${data.maxPlayers})`;
-                
                 updateLobbyUI(); sync3DPlayers();
 
                 if (data.status === 'PLAYING' && !gameActive) startGameClient(data.roomName);
@@ -420,10 +411,14 @@
                 else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) stopGameClient();
                 else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
+                // ĐỒNG BỘ TRẠNG THÁI VÁN ĐẤU
                 if (data.status === 'PLAYING' && data.gameState) {
                     const state = data.gameState; let oldPhase = serverPhase;
-                    serverPhase = state.phase; serverTargetLetter = state.targetLetter || '?';
-                    serverSafeTiles = state.safeTiles || []; serverRound = state.round || 1;
+                    serverPhase = state.phase; 
+                    serverTargetLetter = state.targetLetter || '?';
+                    serverSafeTiles = state.safeTiles || []; 
+                    serverDangerLetters = state.dangerLetters || {}; // Load bộ chữ sai cố định
+                    serverRound = state.round || 1;
 
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
                         myPlayer.score += 10; uploadMyPosition(); 
@@ -466,9 +461,15 @@
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
         });
 
-        // --- HOST LOGIC ---
+        // --- HOST LOGIC (CẬP NHẬT CƠ CHẾ ROLL CHỮ) ---
         document.getElementById('btnStartGame').onclick = async () => {
-            await updateDoc(doc(db, "rooms", currentRoomId), { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 });
+            // Đảm bảo khởi tạo lại điểm và mạng sống cho TẤT CẢ mọi người khi bắt đầu ván mới
+            let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1 };
+            for (let p in players) {
+                updates[`players.${p}.isAlive`] = true;
+                updates[`players.${p}.score`] = 0; 
+            }
+            await updateDoc(doc(db, "rooms", currentRoomId), updates);
             startHostLoop(); 
         };
 
@@ -480,31 +481,45 @@
                 if (!gameActive || !isHost) return clearInterval(hostGameLoop);
                 phaseTime++;
 
-                if (serverPhase === 'IDLE' && phaseTime >= 4) {
-                    serverPhase = 'ROLLING_TARGET'; phaseTime = 0;
+                if (serverPhase === 'IDLE' && phaseTime >= 3) {
+                    // PHA 1: Quay chữ ngẫu nhiên cả bảng lẫn sàn
+                    serverPhase = 'ROLLING'; phaseTime = 0;
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.targetLetter": '?' });
                 } 
-                else if (serverPhase === 'ROLLING_TARGET' && phaseTime >= 3) {
-                    serverPhase = 'SHUFFLING_FLOOR'; phaseTime = 0;
-                    let target = lettersList[Math.floor(Math.random()*lettersList.length)];
-                    await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.targetLetter": target });
-                }
-                else if (serverPhase === 'SHUFFLING_FLOOR' && phaseTime >= 4) {
+                else if (serverPhase === 'ROLLING' && phaseTime >= 4) {
+                    // PHA 2: Chốt chữ, sàn và bảng đều dừng quay
                     serverPhase = 'LOCKED'; phaseTime = 0;
-                    let safeCount = Math.max(1, 20 - (serverRound * 3));
+                    
+                    let target = lettersList[Math.floor(Math.random()*lettersList.length)];
+                    let safeCount = Math.max(1, 20 - (serverRound * 3)); // Số ô an toàn giảm dần
                     let allIndices = Array.from({length: 81}, (_, i) => i);
                     let safeArr = [];
                     for(let i=0; i<safeCount; i++) {
                         let rIdx = Math.floor(Math.random() * allIndices.length);
                         safeArr.push(allIndices[rIdx]); allIndices.splice(rIdx, 1);
                     }
-                    await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.safeTiles": safeArr });
+                    
+                    // Tạo một bộ "Chữ Sai" tĩnh cho các ô sập bẫy để nó KHÔNG nhảy loạn xạ nữa
+                    let dLetters = {};
+                    allIndices.forEach(idx => {
+                        let wLetters = lettersList.filter(l => l !== target);
+                        dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
+                    });
+
+                    await updateDoc(doc(db, "rooms", currentRoomId), { 
+                        "gameState.phase": serverPhase, 
+                        "gameState.targetLetter": target,
+                        "gameState.safeTiles": safeArr,
+                        "gameState.dangerLetters": dLetters
+                    });
                 }
                 else if (serverPhase === 'LOCKED' && phaseTime >= 2) {
+                    // PHA 3: Sập bẫy
                     serverPhase = 'DROP'; phaseTime = 0;
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase });
                 }
                 else if (serverPhase === 'DROP' && phaseTime >= 3) {
+                    // Kiểm tra kết thúc ván
                     let aliveCount = Object.values(players).filter(p => p.isAlive).length;
                     let totalPlayers = Object.keys(players).length;
                     
@@ -539,12 +554,10 @@
             showScreen('lobby'); 
         }
 
-        // Logic Xoá phòng tự động nếu rời hết
         async function forceLeaveRoom(reason = "") {
             if(reason) alert(reason);
             gameActive = false; document.getElementById('gameUI').style.display = 'none';
             if (hostGameLoop) clearInterval(hostGameLoop);
-            
             showScreen('mainMenu');
             if (unsubscribeRoom) unsubscribeRoom();
             if (unsubscribeChat) unsubscribeChat();
@@ -552,24 +565,19 @@
             if (currentRoomId) {
                 sendSystemMessage(`Người chơi [${myId.substring(0,4)}] đã thoát.`);
                 const pCount = Object.keys(players).length;
-                
-                // NẾU LÀ NGƯỜI CUỐI CÙNG HOẶC DUY NHẤT -> XOÁ PHÒNG NGAY LẬP TỨC
                 if (pCount <= 1) {
                     await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
                 } else {
                     await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
                     if (isHost) {
                         const remainingIds = Object.keys(players).filter(id => id !== myId);
-                        if (remainingIds.length > 0) {
-                            await updateDoc(doc(db, "rooms", currentRoomId), { hostId: remainingIds[0], [`players.${remainingIds[0]}.isHost`]: true });
-                        }
+                        if (remainingIds.length > 0) await updateDoc(doc(db, "rooms", currentRoomId), { hostId: remainingIds[0], [`players.${remainingIds[0]}.isHost`]: true });
                     }
                 }
             }
             currentRoomId = null; isHost = false;
         }
 
-        // Tự động xoá nếu đóng tab
         window.addEventListener('beforeunload', () => {
             if (currentRoomId) {
                 if (Object.keys(players).length <= 1) deleteDoc(doc(db, "rooms", currentRoomId));
@@ -581,19 +589,17 @@
         document.getElementById('btnLeave').onclick = () => forceLeaveRoom();
         document.getElementById('btnReturnLobby').onclick = async () => { if (isHost) await updateDoc(doc(db, "rooms", currentRoomId), { status: 'LOBBY' }); };
 
-        // HIỂN THỊ KẾT THÚC & SCOREBOARD
         function showGameOver() {
             gameActive = false; document.getElementById('gameUI').style.display = 'none';
             showScreen('gameOver');
 
             let arr = Object.keys(players).map(k => ({ id: k, ...players[k] }));
-            arr.sort((a,b) => b.score - a.score); // Xếp hạng theo Điểm tổng
+            arr.sort((a,b) => b.score - a.score); 
             
             let sbHTML = `<div class="score-row score-header"><span>Người Chơi</span><span>K / D</span><span>Điểm Tổng</span></div>`;
             arr.forEach((p, idx) => {
                 let statusInfo = p.isAlive ? '(Sống)' : '(Đã ướt)';
                 let deathCount = p.isAlive ? 0 : 1;
-                
                 sbHTML += `<div class="score-row" style="color: #${p.color.toString(16).padStart(6,'0')}">
                     <span>#${idx+1} ${p.id.substring(0,4)} ${statusInfo}</span>
                     <span>${p.kills} / ${deathCount}</span>
@@ -639,35 +645,46 @@
                 tb.innerText = serverPhase === 'IDLE' ? `VÒNG ${serverRound}` : serverTargetLetter;
                 
                 if (serverPhase === 'IDLE') tb.style.borderColor = '#444';
-                else if (serverPhase === 'ROLLING_TARGET') {
-                    if (frameCount % 5 === 0) tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
+                else if (serverPhase === 'ROLLING') {
+                    // Cứ 20 khung hình mới roll 1 lần để mắt đọc được chữ
+                    if (frameCount % 20 === 0) tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
                     tb.style.borderColor = '#00aaff';
                 }
                 else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
 
                 tiles.forEach((tile, index) => {
-                    if (serverPhase === 'IDLE' || serverPhase === 'ROLLING_TARGET') {
+                    if (serverPhase === 'IDLE') {
                         tile.userData.targetY = -0.25; tile.material = matBlank; tile.userData.isDanger = false;
                     } 
-                    else if (serverPhase === 'SHUFFLING_FLOOR') {
-                        tile.userData.targetY = -0.25;
-                        if (frameCount % 10 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                    else if (serverPhase === 'ROLLING') {
+                        tile.userData.targetY = -0.25; tile.userData.isDanger = false;
+                        if (frameCount % 20 === 0) {
+                            tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                        }
                     }
                     else if (serverPhase === 'LOCKED') {
+                        tile.userData.targetY = -0.25;
                         if (serverSafeTiles.includes(index)) {
                             tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
                         } else {
-                            let wl = lettersList.filter(l => l !== serverTargetLetter)[Math.floor(Math.random()*2)];
-                            tile.material = matsDanger[wl]; tile.userData.isDanger = true;
+                            // Gọi tĩnh chữ sai được lấy từ Server (Không bao giờ nhảy nữa)
+                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
                         }
                     }
-                    else if (serverPhase === 'DROP' && tile.userData.isDanger) {
-                        tile.userData.targetY = -2.5; 
+                    else if (serverPhase === 'DROP') {
+                        // Vật liệu giữ nguyên giống pha LOCKED
+                        if (serverSafeTiles.includes(index)) {
+                            tile.material = matsSafe[serverTargetLetter]; tile.userData.isDanger = false;
+                        } else {
+                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                            tile.material = matsDanger[dl]; tile.userData.isDanger = true;
+                            tile.userData.targetY = -2.5; 
+                        }
                     }
                     tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
                 });
 
-                // XỬ LÝ DI CHUYỂN (WSAD ĐÃ FIX NGƯỢC CHIỀU) VÀ PHẢI CÒN SỐNG MỚI ĐƯỢC CHẠY
                 if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
                     if (keys.w) myPlayer.z -= moveSpeed;
                     if (keys.s) myPlayer.z += moveSpeed;
@@ -678,8 +695,7 @@
                     myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
                     myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
 
-                    checkDeath(); 
-                    uploadMyPosition();
+                    checkDeath(); uploadMyPosition();
                 }
 
                 if (!playerMeshes[myId]) {
@@ -690,15 +706,13 @@
                 playerMeshes[myId].position.x = myPlayer.x;
                 playerMeshes[myId].position.z = myPlayer.z;
                 
-                // QUẢN LÝ CAMERA (SPECTATOR MODE KHI CHẾT)
                 if (myPlayer.isAlive) {
                     playerMeshes[myId].position.y = 0.5;
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
                     camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.05);
                 } else {
-                    playerMeshes[myId].position.y = -2; // Xác rơi xuống hố
-                    // Khán giả: Camera bay ra giữa và zoom out nhìn toàn cảnh
+                    playerMeshes[myId].position.y = -2; 
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, 0.02);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, 0.02);
                     camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, 0.02); 
@@ -707,26 +721,21 @@
             renderer.render(scene, camera);
         }
 
-        // XỬ LÝ CHẾT
         function checkDeath() {
-            if (!myPlayer.isAlive) return;
+            // FIX QUAN TRỌNG: Chỉ cho phép "Chết" khi bẫy đang SẬP XUỐNG
+            if (!myPlayer.isAlive || serverPhase !== 'DROP') return; 
+            
             let closestTile = null; let minDist = Infinity;
             tiles.forEach(tile => {
                 const dist = new THREE.Vector3(myPlayer.x, 0.5, myPlayer.z).distanceTo(new THREE.Vector3(tile.position.x, 0.5, tile.position.z));
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
             
-            // Nếu phát hiện đứng trên ô đang rơi
             if (closestTile && closestTile.position.y < -1) {
                 myPlayer.isAlive = false; 
-                
-                // Hiển thị "BẠN ĐÃ ƯỚT" trong 1 giây
                 const st = document.getElementById('statusText');
-                st.innerText = "BẠN ĐÃ ƯỚT";
-                st.style.display = 'block'; 
+                st.innerText = "BẠN ĐÃ ƯỚT"; st.style.display = 'block'; 
                 setTimeout(() => { st.style.display = 'none'; }, 1000);
-
-                // Ép update lên máy chủ ngay lập tức để chốt trạng thái chết
                 uploadMyPosition();
             }
         }
