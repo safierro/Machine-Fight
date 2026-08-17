@@ -58,7 +58,6 @@
         .player-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.5); margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #fff; font-size: 18px; }
         .player-color { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; border: 2px solid #fff; }
         
-        /* Chọn màu Robot */
         .color-picker-container { display: flex; align-items: center; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444; }
         .color-picker-container label { font-size: 14px; font-weight: bold; color: #fff; margin-right: 15px; text-transform: uppercase; }
         #colorPicker { -webkit-appearance: none; border: none; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; padding: 0; background: none; }
@@ -79,7 +78,7 @@
         .top-bar { position: absolute; top: 20px; left: 20px; display: flex; justify-content: space-between; width: calc(100% - 40px); pointer-events: auto; }
         #roomCodeDisplay { font-size: 20px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333; display: flex; flex-direction: column;}
         
-        #pushStatus { font-size: 14px; color: #00ff00; margin-top: 5px; font-weight: bold; } /* Trạng thái nút đẩy */
+        #pushStatus { font-size: 14px; color: #00ff00; margin-top: 5px; font-weight: bold; } 
         
         #btnLeave { padding: 5px 15px; width: auto; margin: 0; font-size: 16px; pointer-events: auto; }
         #targetBoard { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 80px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: 0.3s; }
@@ -142,7 +141,6 @@
             <div class="panel" style="flex: 1;">
                 <div class="panel-title" id="lobbyPlayerCountTitle">NGƯỜI CHƠI (0/8)</div>
                 
-                <!-- BỘ CHỌN MÀU MỚI -->
                 <div class="color-picker-container">
                     <label>Màu Robot Của Bạn:</label>
                     <input type="color" id="colorPicker" value="#ffffff">
@@ -225,18 +223,26 @@
         let serverHoles = []; 
         let serverRound = 1;
 
-        // Trạng thái Bản Thân (Bổ sung cờ bị đẩy để mượt mà hơn)
-        let myPlayer = { name: "Player", x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0, lastPushedAt: 0 };
+        // Trạng thái Vật Lý Bản Thân
+        let myPlayer = { 
+            name: "Player", 
+            x: 0, z: 0, 
+            vx: 0, vz: 0, // Vận tốc bị đẩy văng
+            color: 0xffffff, 
+            isAlive: true, 
+            score: 0, kills: 0, 
+            lastPushTime: 0 // Thời điểm bị đẩy gần nhất
+        };
+
         const moveSpeed = 0.08; 
         const keys = { w: false, a: false, s: false, d: false };
         const gridSize = 9;
         const tileSize = 2;
         const lettersList = ['X', 'Y', 'Z'];
 
-        // Logic Hiệu ứng
         const pushEffects = [];
-        let lastPushTime = 0;
-        const pushCooldown = 2000; // 2 Giây
+        let myCooldownTime = 0;
+        const pushCooldown = 2000; 
 
         const screens = {
             loading: document.getElementById('loadingScreen'),
@@ -272,42 +278,54 @@
         const spotLight = new THREE.SpotLight(0xfffaee, 1.5);
         spotLight.position.set(0, 30, 0); spotLight.castShadow = true; scene.add(spotLight);
 
-        // HÀM TẠO MODEL ROBOT CƠ BẢN BẰNG CODE
-        function createRobotModel(colorHex) {
+        // HÀM TẠO TÊN LƠ LỬNG (NAME TAG)
+        function createNameSprite(name, colorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#' + colorHex.toString(16).padStart(6, '0');
+            ctx.font = 'bold 50px Oswald, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.shadowColor = "black"; ctx.shadowBlur = 8; ctx.lineWidth = 5;
+            ctx.strokeText(name, 256, 64);
+            ctx.fillText(name, 256, 64);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(4, 1, 1);
+            return sprite;
+        }
+
+        // HÀM TẠO MODEL ROBOT CÓ TÊN
+        function createRobotModel(colorHex, playerName) {
             const group = new THREE.Group();
             const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6, metalness: 0.3 });
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const eyeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.8 });
 
-            // Thân (Box)
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.5), bodyMat);
-            torso.position.y = 0.5;
-            torso.castShadow = true;
-            group.add(torso);
+            torso.position.y = 0.5; torso.castShadow = true; group.add(torso);
 
-            // Đầu (Box nhỏ hơn)
             const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.4), bodyMat);
-            head.position.y = 1.05;
-            head.castShadow = true;
-            group.add(head);
+            head.position.y = 1.05; head.castShadow = true; group.add(head);
 
-            // Kính ngắm (Mắt Robot phát sáng)
             const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1), eyeMat);
-            visor.position.set(0, 1.1, 0.21);
-            group.add(visor);
+            visor.position.set(0, 1.1, 0.21); group.add(visor);
 
-            // Đế / Bánh xe
             const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16), darkMat);
-            base.position.y = 0.1;
-            base.castShadow = true;
-            group.add(base);
+            base.position.y = 0.1; base.castShadow = true; group.add(base);
 
-            // Hàm hỗ trợ đổi màu lúc đang chơi
-            group.userData = { bodyMat };
+            // Thêm Tên trên đầu
+            const nameSprite = createNameSprite(playerName, colorHex);
+            nameSprite.position.y = 2.0; 
+            group.add(nameSprite);
+
+            group.userData = { bodyMat, nameSprite };
             return group;
         }
 
-        // Texture Mặt Sàn
         function createTileMaterial(letter, bgColorHex, textColorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 256;
@@ -359,7 +377,6 @@
             showScreen('joinRoom'); listenToRoomList(); 
         };
         
-        // Sự kiện Đổi Màu Robot trong Sảnh
         document.getElementById('colorPicker').addEventListener('change', async (e) => {
             if (!currentRoomId || !myId) return;
             const hexVal = parseInt(e.target.value.replace('#', '0x'), 16);
@@ -371,7 +388,7 @@
         document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
         document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
-        // --- TẠO PHÒNG ---
+        // --- TẠO VÀ VÀO PHÒNG ---
         document.getElementById('btnCreateRoomSubmit').onclick = async () => {
             const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
             let maxP = parseInt(document.getElementById('crMaxPlayers').value);
@@ -388,13 +405,12 @@
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
                     gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, holes: [], round: 1 },
-                    players: { [myId]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: true, score: 0, kills: 0, pushedAt: 0 } }
+                    players: { [myId]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
             } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
         };
 
-        // --- DANH SÁCH PHÒNG ---
         let unsubscribeRoomList = null;
         function listenToRoomList() {
             const roomListUI = document.getElementById('roomListUI');
@@ -436,7 +452,7 @@
             myPlayer.color = startColor;
             
             try {
-                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: false, score: 0, kills: 0, pushedAt: 0 } });
+                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: false, score: 0, kills: 0 } });
                 if(unsubscribeRoomList) unsubscribeRoomList();
                 enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
             } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
@@ -480,14 +496,14 @@
                 else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) stopGameClient();
                 else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
-                // KIỂM TRA BẢN THÂN CÓ BỊ ĐẨY BỞI NGƯỜI KHÁC KHÔNG
+                // LẮNG NGHE TÍN HIỆU "BỊ ĐẨY" TỪ MÁY CHỦ
                 if (gameActive && data.players[myId]) {
                     const serverMe = data.players[myId];
-                    if (serverMe.pushedAt && serverMe.pushedAt !== myPlayer.lastPushedAt) {
-                        // Tôi vừa bị đẩy văng! (Ghi đè vị trí local bằng vị trí server cung cấp)
-                        myPlayer.x = serverMe.x;
-                        myPlayer.z = serverMe.z;
-                        myPlayer.lastPushedAt = serverMe.pushedAt;
+                    if (serverMe.push && serverMe.push.time !== myPlayer.lastPushTime) {
+                        // TÔI VỪA BỊ ĐẨY! Áp dụng Vận tốc ngay lập tức ở Client
+                        myPlayer.lastPushTime = serverMe.push.time;
+                        myPlayer.vx = serverMe.push.nx;
+                        myPlayer.vz = serverMe.push.nz;
                     }
                 }
 
@@ -508,30 +524,28 @@
             });
         }
 
-        // --- CƠ CHẾ SÓNG XUNG KÍCH (PUSH) ---
+        // --- CƠ CHẾ SÓNG XUNG KÍCH (CHUỘT TRÁI) ---
         window.addEventListener('mousedown', (e) => {
             if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
             const now = Date.now();
-            if (now - lastPushTime < pushCooldown) return;
+            if (now - myCooldownTime < pushCooldown) return;
             
-            lastPushTime = now;
+            myCooldownTime = now;
             
-            // UI Cooldown
             const statusUI = document.getElementById('pushStatus');
             statusUI.innerText = "SÓNG ĐẨY: ĐANG HỒI...";
             statusUI.style.color = "#888";
             setTimeout(() => { if (gameActive) { statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; statusUI.style.color = "#00ff00"; } }, pushCooldown);
 
-            // Vòng hiệu ứng 3D
-            const geo = new THREE.RingGeometry(0.5, 3, 32);
+            const geo = new THREE.RingGeometry(0.5, 3.5, 32);
             const mat = new THREE.MeshBasicMaterial({ color: myPlayer.color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
             const ring = new THREE.Mesh(geo, mat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPlayer.x, -0.15, myPlayer.z); // Đặt hơi chìm dưới chân
+            ring.position.set(myPlayer.x, 0.05, myPlayer.z); 
             scene.add(ring);
             pushEffects.push({ mesh: ring, scale: 1, opacity: 0.8 });
 
-            // Tính va chạm đẩy người khác
+            // Gửi lực đẩy cho các nạn nhân
             for (let uid in players) {
                 if (uid === myId || !players[uid].isAlive) continue;
                 
@@ -540,22 +554,21 @@
                 const dz = p.z - myPlayer.z;
                 const dist = Math.sqrt(dx*dx + dz*dz);
 
-                if (dist < 3.5) { // Bán kính đẩy
-                    let pushPower = 3.5 - (dist * 0.7); // Càng gần văng càng mạnh
+                if (dist < 3.5 && dist > 0) { 
+                    // Lực đẩy từ 0.5 đến 1.5 đơn vị vận tốc
+                    let pushPower = Math.max(0.5, 1.8 - dist * 0.4); 
                     const nx = (dx / dist) * pushPower;
                     const nz = (dz / dist) * pushPower;
                     
-                    // Ghi thẳng vị trí văng lên server (Kèm cờ createdAt để máy nạn nhân nhận biết)
+                    // Ghi TÍN HIỆU đẩy lên máy chủ, máy nạn nhân sẽ tự đọc tín hiệu này để trượt đi
                     updateDoc(doc(db, "rooms", currentRoomId), {
-                        [`players.${uid}.x`]: p.x + nx,
-                        [`players.${uid}.z`]: p.z + nz,
-                        [`players.${uid}.pushedAt`]: now
+                        [`players.${uid}.push`]: { nx: nx, nz: nz, time: now }
                     }).catch(()=>{});
                 }
             }
         });
 
-        // HỆ THỐNG CHAT (Giữ nguyên)
+        // HỆ THỐNG CHAT 
         function listenToChat() {
             const q = query(collection(db, "rooms", currentRoomId, "chat"), orderBy("time", "desc"), limit(20));
             unsubscribeChat = onSnapshot(q, (snap) => {
@@ -685,6 +698,7 @@
 
             myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
             myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
+            myPlayer.vx = 0; myPlayer.vz = 0; // Đặt lại Vận tốc đẩy
             myPlayer.isAlive = true;
             
             camera.position.set(20, 30, 20); camera.lookAt(scene.position);
@@ -768,18 +782,21 @@
             for (let id in players) {
                 if (id === myId) continue;
                 const pData = players[id];
+                const displayName = pData.name || id.substring(0,4);
+                
                 if (!playerMeshes[id]) {
-                    playerMeshes[id] = createRobotModel(pData.color); // GỌI HÀM TẠO ROBOT THAY CHO CUBE
+                    playerMeshes[id] = createRobotModel(pData.color, displayName); 
                     scene.add(playerMeshes[id]);
                 } else {
-                    // Update màu sắc nếu họ đổi trong sảnh
                     if (playerMeshes[id].userData.bodyMat.color.getHex() !== pData.color) {
                         playerMeshes[id].userData.bodyMat.color.setHex(pData.color);
                     }
                 }
-                playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.1);
-                playerMeshes[id].position.z = THREE.MathUtils.lerp(playerMeshes[id].position.z, pData.z, 0.1);
-                playerMeshes[id].position.y = pData.isAlive ? 0 : -2.5; // Y=0 vì origin của Robot nằm dưới chân
+                
+                // NỘI SUY MƯỢT MÀ HƠN (Tăng lerp từ 0.1 -> 0.3)
+                playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.3);
+                playerMeshes[id].position.z = THREE.MathUtils.lerp(playerMeshes[id].position.z, pData.z, 0.3);
+                playerMeshes[id].position.y = pData.isAlive ? 0 : -2.5; 
             }
         }
 
@@ -789,7 +806,6 @@
             requestAnimationFrame(animate);
             frameCount++;
 
-            // Render hiệu ứng Sóng xung kích
             pushEffects.forEach((eff, index) => {
                 eff.scale += 0.15;
                 eff.opacity -= 0.03;
@@ -845,6 +861,17 @@
                 });
 
                 if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
+                    // ÁP DỤNG VẬN TỐC ĐẨY (Từ kỹ năng push)
+                    myPlayer.x += myPlayer.vx;
+                    myPlayer.z += myPlayer.vz;
+                    
+                    // Ma sát giảm dần vận tốc văng
+                    myPlayer.vx *= 0.85;
+                    myPlayer.vz *= 0.85;
+                    if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
+                    if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
+
+                    // Di chuyển phím
                     if (keys.w) myPlayer.z -= moveSpeed;
                     if (keys.s) myPlayer.z += moveSpeed;
                     if (keys.a) myPlayer.x -= moveSpeed;
@@ -858,17 +885,17 @@
                 }
 
                 if (!playerMeshes[myId]) {
-                    playerMeshes[myId] = createRobotModel(myPlayer.color);
+                    playerMeshes[myId] = createRobotModel(myPlayer.color, myName);
                     scene.add(playerMeshes[myId]);
                 }
                 
-                // Cập nhật góc nhìn (xoay) Robot dựa vào hướng di chuyển
-                if (keys.w || keys.s || keys.a || keys.d) {
+                if (keys.w || keys.s || keys.a || keys.d || Math.abs(myPlayer.vx) > 0.1 || Math.abs(myPlayer.vz) > 0.1) {
+                    // Cập nhật hướng xoay của bản thân
                     let moveAngle = Math.atan2( (keys.x ? 1 : 0) - (keys.a ? 1 : 0), (keys.s ? 1 : 0) - (keys.w ? 1 : 0) );
-                    if (keys.w && !keys.a && !keys.s && !keys.d) moveAngle = Math.PI; // Up
-                    if (keys.s && !keys.a && !keys.w && !keys.d) moveAngle = 0; // Down
-                    if (keys.a && !keys.w && !keys.s && !keys.d) moveAngle = -Math.PI / 2; // Left
-                    if (keys.d && !keys.w && !keys.s && !keys.a) moveAngle = Math.PI / 2; // Right
+                    if (keys.w && !keys.a && !keys.s && !keys.d) moveAngle = Math.PI; 
+                    if (keys.s && !keys.a && !keys.w && !keys.d) moveAngle = 0; 
+                    if (keys.a && !keys.w && !keys.s && !keys.d) moveAngle = -Math.PI / 2; 
+                    if (keys.d && !keys.w && !keys.s && !keys.a) moveAngle = Math.PI / 2; 
                     
                     if (keys.w && keys.a) moveAngle = -Math.PI * 0.75;
                     if (keys.w && keys.d) moveAngle = Math.PI * 0.75;
@@ -882,7 +909,7 @@
                 playerMeshes[myId].position.z = myPlayer.z;
                 
                 if (myPlayer.isAlive) {
-                    playerMeshes[myId].position.y = 0; // Origin mới nằm ở bánh xe
+                    playerMeshes[myId].position.y = 0; 
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
                     camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.05);
@@ -917,7 +944,8 @@
         let lastUpdate = 0;
         async function uploadMyPosition() {
             let now = Date.now();
-            if (now - lastUpdate > 100 || !myPlayer.isAlive) { 
+            // GỬI DATA LÊN SERVER VỚI TẦN SUẤT CAO HƠN (40ms ~ 25FPS)
+            if (now - lastUpdate > 40 || !myPlayer.isAlive) { 
                 lastUpdate = now;
                 await updateDoc(doc(db, "rooms", currentRoomId), {
                     [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
