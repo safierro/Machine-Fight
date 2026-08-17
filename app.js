@@ -40,13 +40,15 @@ let myPlayer = {
     color: 0xffffff, 
     isAlive: true, 
     score: 0, kills: 0, 
-    lastPushTime: 0 
+    lastPushTime: 0,
+    facingAngle: 0 // Lưu hướng nhìn hiện tại của Robot
 };
 
+// Tốc độ di chuyển chậm lại
 const moveSpeed = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
-const tileSize = 2;
+const tileSize = 2; // Kích thước 1 ô là 2 đơn vị
 const lettersList = ['X', 'Y', 'Z'];
 
 const pushEffects = [];
@@ -167,6 +169,7 @@ for (let x = 0; x < gridSize; x++) {
 scene.add(floorGroup);
 const playerMeshes = {};
 
+// --- ĐĂNG NHẬP FIREBASE & UI ---
 signInAnonymously(auth).then((userCred) => {
     myId = userCred.user.uid;
     showScreen('mainMenu');
@@ -324,6 +327,7 @@ function listenToCurrentRoom() {
     });
 }
 
+// --- CƠ CHẾ ĐẨY (HÌNH NÓN THEO HƯỚNG NHÌN) ---
 window.addEventListener('mousedown', (e) => {
     if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
     const now = Date.now();
@@ -336,14 +340,23 @@ window.addEventListener('mousedown', (e) => {
     statusUI.style.color = "#888";
     setTimeout(() => { if (gameActive) { statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; statusUI.style.color = "#00ff00"; } }, pushCooldown);
 
-    const geo = new THREE.RingGeometry(0.5, 3.5, 32);
-    const mat = new THREE.MeshBasicMaterial({ color: myPlayer.color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
-    const ring = new THREE.Mesh(geo, mat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(myPlayer.x, 0.05, myPlayer.z); 
-    scene.add(ring);
-    pushEffects.push({ mesh: ring, scale: 1, opacity: 0.8 });
+    // Hiệu ứng hình nón (ConeGeometry) chiếu về phía trước
+    const coneGeo = new THREE.ConeGeometry(2, 3, 16); 
+    const coneMat = new THREE.MeshBasicMaterial({ color: myPlayer.color, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+    const cone = new THREE.Mesh(coneGeo, coneMat);
+    
+    cone.position.set(myPlayer.x, 0.5, myPlayer.z);
+    
+    // Xoay đỉnh nón về hướng Player đang nhìn
+    cone.rotation.y = myPlayer.facingAngle;
+    cone.rotation.x = Math.PI / 2;
+    // Dịch chuyển nón ra phía trước một chút để không che lấp bản thân
+    cone.translateY(-1.5);
 
+    scene.add(cone);
+    pushEffects.push({ mesh: cone, scale: 1, opacity: 0.6, type: 'cone' });
+
+    // TÍNH TOÁN VA CHẠM HÌNH NÓN
     for (let uid in players) {
         if (uid === myId || !players[uid].isAlive) continue;
         
@@ -351,15 +364,29 @@ window.addEventListener('mousedown', (e) => {
         const dx = p.x - myPlayer.x;
         const dz = p.z - myPlayer.z;
         const dist = Math.sqrt(dx*dx + dz*dz);
-
-        if (dist < 3.5 && dist > 0) { 
-            let pushPower = Math.max(0.5, 1.8 - dist * 0.4); 
-            const nx = (dx / dist) * pushPower;
-            const nz = (dz / dist) * pushPower;
+        
+        // Giới hạn tầm đẩy trong 1 ô vuông rưỡi (Tương đương tileSize * 1.5 = 3.0)
+        if (dist > 0 && dist < 3.0) { 
+            // Kiểm tra xem mục tiêu có nằm trong góc nhìn không (Góc hình nón 90 độ)
+            const angleToTarget = Math.atan2(dx, dz);
             
-            updateDoc(doc(db, "rooms", currentRoomId), {
-                [`players.${uid}.push`]: { nx: nx, nz: nz, time: now }
-            }).catch(()=>{});
+            // Xử lý góc lệch giữa 2 vector (-Pi đến Pi)
+            let angleDiff = angleToTarget - myPlayer.facingAngle;
+            while (angleDiff <= -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            
+            if (Math.abs(angleDiff) <= Math.PI / 4) { // Nằm trong góc 45 độ mỗi bên (Tổng nón 90 độ)
+                // Đẩy tối đa 2 ô (Vận tốc 1.0) nếu sát rạt, đẩy 1 ô (Vận tốc 0.5) nếu ở rìa
+                let pushPower = Math.max(0.5, 1.2 - dist * 0.3); 
+                
+                // Vector hướng đẩy (Đẩy ra xa khỏi bản thân)
+                const nx = (dx / dist) * pushPower;
+                const nz = (dz / dist) * pushPower;
+                
+                updateDoc(doc(db, "rooms", currentRoomId), {
+                    [`players.${uid}.push`]: { nx: nx, nz: nz, time: now }
+                }).catch(()=>{});
+            }
         }
     }
 });
@@ -433,7 +460,7 @@ function startHostLoop() {
             
             let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
             
-            // CƠ CHẾ 2: Giảm dần tỷ lệ an toàn (bắt đầu 40%, trừ 5% mỗi vòng)
+            // Logic Cơ chế chữ: Vẫn duy trì đủ ô an toàn (tính bằng % của Sàn Còn Lại)
             let safeRatio = Math.max(0.1, 0.4 - (serverRound - 1) * 0.05);
             let safeCount = Math.floor(activeTiles.length * safeRatio);
             safeCount = Math.max(2, safeCount); 
@@ -464,21 +491,27 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            // CƠ CHẾ 1: Tăng số lượng hố (+6 mỗi round)
-            let holeCount = (serverRound - 1) * 6; 
-            if (holeCount > 72) holeCount = 72; // Đảm bảo luôn còn ít nhất 9 ô để nhảy
+            // FIX CƠ CHẾ SỤT LÚN THÔNG MINH (+10 Ô MỖI VÒNG)
+            let holeCountToAdd = 10;
             
-            let allIndices = Array.from({length: 81}, (_, i) => i);
+            // Chỉ chọn ngẫu nhiên Hố Mới từ những ô MÀU ĐỎ (ô đã bị rớt) ở vòng vừa rồi.
+            // Điều này đảm bảo những Ô An Toàn của vòng trước sẽ không bao giờ bị biến thành hố vĩnh viễn ở vòng sau.
+            let eligibleTilesToBreak = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
+            
             let newHoles = [];
-            for(let i=0; i < holeCount; i++) {
-                let rIdx = Math.floor(Math.random() * allIndices.length);
-                newHoles.push(allIndices[rIdx]);
-                allIndices.splice(rIdx, 1);
+            for(let i=0; i < holeCountToAdd; i++) {
+                if (eligibleTilesToBreak.length === 0) break;
+                let rIdx = Math.floor(Math.random() * eligibleTilesToBreak.length);
+                newHoles.push(eligibleTilesToBreak[rIdx]);
+                eligibleTilesToBreak.splice(rIdx, 1);
             }
+
+            let updatedHoles = [...serverHoles, ...newHoles];
+            if (updatedHoles.length > 72) updatedHoles = updatedHoles.slice(0, 72);
 
             serverPhase = 'IDLE'; phaseTime = 0;
             await updateDoc(doc(db, "rooms", currentRoomId), { 
-                "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": newHoles
+                "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": updatedHoles
             });
         }
     }, 1000);
@@ -597,13 +630,21 @@ function sync3DPlayers() {
     }
 }
 
+// --- CẬP NHẬT RENDER LOOP ---
 let frameCount = 0;
 function animate() {
     requestAnimationFrame(animate);
     frameCount++;
 
     pushEffects.forEach((eff, index) => {
-        eff.scale += 0.15;
+        if(eff.type === 'cone') {
+            // Hiệu ứng nón bắn vọt ra trước
+            eff.scale += 0.2;
+            eff.mesh.translateY(-0.3); 
+        } else {
+            eff.scale += 0.15;
+        }
+        
         eff.opacity -= 0.03;
         eff.mesh.scale.set(eff.scale, eff.scale, eff.scale);
         eff.mesh.material.opacity = eff.opacity;
@@ -624,6 +665,7 @@ function animate() {
             }
             tb.style.borderColor = '#00aaff';
             
+            // FADE IN FADE OUT MƯỢT MÀ CHẬM LẠI
             tb.style.opacity = 0.2 + 0.8 * Math.abs(Math.sin(frameCount * 0.05)); 
         }
         else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
@@ -705,6 +747,8 @@ function animate() {
             if (keys.s && keys.a) moveAngle = -Math.PI * 0.25;
             if (keys.s && keys.d) moveAngle = Math.PI * 0.25;
             
+            // Xoay từ từ và gán luôn vào biến hướng nhìn của Client
+            myPlayer.facingAngle = moveAngle;
             playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, moveAngle, 0.2);
         }
 
