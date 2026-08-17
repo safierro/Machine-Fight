@@ -38,7 +38,6 @@
         }
         input:focus, select:focus { border-color: #00aaff; }
 
-        /* Khung Tên Ngay Trang Chủ */
         #myPlayerName { text-align: center; font-size: 22px; font-weight: bold; border-color: #0088ff; background: rgba(0, 136, 255, 0.1); }
 
         /* Bảng Danh Sách Phòng */
@@ -54,11 +53,18 @@
         /* Sảnh Lobby */
         .lobby-container { display: flex; gap: 20px; width: 90%; max-width: 1000px; height: 60vh; }
         .panel { background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; }
-        .panel-title { color: #00aaff; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .panel-title { color: #00aaff; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
         .player-list { flex: 1; list-style: none; padding: 0; margin: 0; overflow-y: auto; }
         .player-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.5); margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #fff; font-size: 18px; }
         .player-color { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; border: 2px solid #fff; }
         
+        /* Chọn màu Robot */
+        .color-picker-container { display: flex; align-items: center; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444; }
+        .color-picker-container label { font-size: 14px; font-weight: bold; color: #fff; margin-right: 15px; text-transform: uppercase; }
+        #colorPicker { -webkit-appearance: none; border: none; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; padding: 0; background: none; }
+        #colorPicker::-webkit-color-swatch-wrapper { padding: 0; }
+        #colorPicker::-webkit-color-swatch { border: 2px solid #fff; border-radius: 5px; }
+
         /* Chat */
         .chat-box { flex: 1; display: flex; flex-direction: column; height: 100%; }
         .chat-messages { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 15px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px;}
@@ -71,7 +77,10 @@
         /* In-Game UI */
         #gameUI { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; display: none; }
         .top-bar { position: absolute; top: 20px; left: 20px; display: flex; justify-content: space-between; width: calc(100% - 40px); pointer-events: auto; }
-        #roomCodeDisplay { font-size: 20px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333;}
+        #roomCodeDisplay { font-size: 20px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333; display: flex; flex-direction: column;}
+        
+        #pushStatus { font-size: 14px; color: #00ff00; margin-top: 5px; font-weight: bold; } /* Trạng thái nút đẩy */
+        
         #btnLeave { padding: 5px 15px; width: auto; margin: 0; font-size: 16px; pointer-events: auto; }
         #targetBoard { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 80px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: 0.3s; }
         #statusText { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; color: #ff0000; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 20px #ff0000; display: none; z-index: 90;}
@@ -79,7 +88,7 @@
         #inGameChatMessages { height: 150px; overflow-y: auto; padding: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px; }
         #inGameChatInput { margin: 0; width: 100%; padding: 10px; font-size: 14px; border: none; border-top: 1px solid #444; border-radius: 0 0 5px 5px; box-sizing: border-box; background: rgba(0,0,0,0.8); color: #fff; }
 
-        /* Scoreboard (Bảng K/D) */
+        /* Scoreboard */
         #scoreboard { display: flex; flex-direction: column; width: 100%; max-width: 700px; margin-top: 20px; }
         .score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 15px 25px; margin-bottom: 5px; border-radius: 5px; font-size: 20px; font-weight: bold;}
         .score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; background: rgba(0, 170, 255, 0.1); }
@@ -107,25 +116,13 @@
     <!-- TẠO PHÒNG -->
     <div id="createRoomScreen" class="screen hidden">
         <h1>TẠO PHÒNG</h1>
-        <div class="form-group">
-            <label>Tên phòng</label>
-            <input type="text" id="crRoomName" placeholder="Nhập tên phòng..." maxlength="20">
-        </div>
-        <div class="form-group">
-            <label>Số lượng người chơi tối đa (2-8)</label>
-            <input type="number" id="crMaxPlayers" min="2" max="8" value="8">
-        </div>
+        <div class="form-group"><label>Tên phòng</label><input type="text" id="crRoomName" placeholder="Nhập tên phòng..." maxlength="20"></div>
+        <div class="form-group"><label>Số người (2-8)</label><input type="number" id="crMaxPlayers" min="2" max="8" value="8"></div>
         <div class="form-group">
             <label>Chế độ phòng</label>
-            <select id="crPrivacy">
-                <option value="public">Tự do (Không cần mật khẩu)</option>
-                <option value="private">Riêng tư (Cần mật khẩu)</option>
-            </select>
+            <select id="crPrivacy"><option value="public">Tự do</option><option value="private">Riêng tư</option></select>
         </div>
-        <div class="form-group hidden" id="crPasswordGroup">
-            <label>Mật khẩu</label>
-            <input type="text" id="crPassword" placeholder="Nhập mật khẩu..." maxlength="15">
-        </div>
+        <div class="form-group hidden" id="crPasswordGroup"><label>Mật khẩu</label><input type="text" id="crPassword" placeholder="Nhập mật khẩu..." maxlength="15"></div>
         <button class="btn" id="btnCreateRoomSubmit">TẠO VÀ VÀO PHÒNG</button>
         <button class="btn btn-secondary" id="btnBackFromCreate">QUAY LẠI</button>
     </div>
@@ -144,6 +141,13 @@
         <div class="lobby-container">
             <div class="panel" style="flex: 1;">
                 <div class="panel-title" id="lobbyPlayerCountTitle">NGƯỜI CHƠI (0/8)</div>
+                
+                <!-- BỘ CHỌN MÀU MỚI -->
+                <div class="color-picker-container">
+                    <label>Màu Robot Của Bạn:</label>
+                    <input type="color" id="colorPicker" value="#ffffff">
+                </div>
+
                 <ul class="player-list" id="playerListUI"></ul>
                 <button class="btn" id="btnStartGame" style="width:100%; margin: 15px 0 0 0; display: none;">BẮT ĐẦU GAME</button>
                 <button class="btn btn-danger" id="btnExitLobby" style="width:100%; margin: 10px 0 0 0;">THOÁT PHÒNG</button>
@@ -171,7 +175,10 @@
     <!-- UI GAME -->
     <div id="gameUI">
         <div class="top-bar">
-            <div id="roomCodeDisplay">Phòng: ???</div>
+            <div id="roomCodeDisplay">
+                <span id="gameRoomNameText">Phòng: ???</span>
+                <span id="pushStatus">SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)</span>
+            </div>
             <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
         </div>
         <div id="targetBoard">?</div>
@@ -187,7 +194,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // CẤU HÌNH FIREBASE CỦA BẠN
+        // CẤU HÌNH FIREBASE 
         const myFirebaseConfig = {
             apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
             authDomain: "machine-fight.firebaseapp.com",
@@ -202,7 +209,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- CÁC BIẾN TOÀN CỤC ---
+        // --- BIẾN TOÀN CỤC ---
         let myId = null;
         let myName = "Player";
         let currentRoomId = null;
@@ -215,15 +222,21 @@
         let serverTargetLetter = '?';
         let serverSafeTiles = [];
         let serverDangerLetters = {}; 
-        let serverHoles = []; // CƠ CHẾ MỚI: Mảng lưu vị trí hố mặc định của từng vòng
+        let serverHoles = []; 
         let serverRound = 1;
 
-        let myPlayer = { name: "Player", x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0 };
+        // Trạng thái Bản Thân (Bổ sung cờ bị đẩy để mượt mà hơn)
+        let myPlayer = { name: "Player", x: 0, z: 0, color: 0xffffff, isAlive: true, score: 0, kills: 0, lastPushedAt: 0 };
         const moveSpeed = 0.08; 
         const keys = { w: false, a: false, s: false, d: false };
         const gridSize = 9;
         const tileSize = 2;
         const lettersList = ['X', 'Y', 'Z'];
+
+        // Logic Hiệu ứng
+        const pushEffects = [];
+        let lastPushTime = 0;
+        const pushCooldown = 2000; // 2 Giây
 
         const screens = {
             loading: document.getElementById('loadingScreen'),
@@ -259,6 +272,42 @@
         const spotLight = new THREE.SpotLight(0xfffaee, 1.5);
         spotLight.position.set(0, 30, 0); spotLight.castShadow = true; scene.add(spotLight);
 
+        // HÀM TẠO MODEL ROBOT CƠ BẢN BẰNG CODE
+        function createRobotModel(colorHex) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6, metalness: 0.3 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.8 });
+
+            // Thân (Box)
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.5), bodyMat);
+            torso.position.y = 0.5;
+            torso.castShadow = true;
+            group.add(torso);
+
+            // Đầu (Box nhỏ hơn)
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.4), bodyMat);
+            head.position.y = 1.05;
+            head.castShadow = true;
+            group.add(head);
+
+            // Kính ngắm (Mắt Robot phát sáng)
+            const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1), eyeMat);
+            visor.position.set(0, 1.1, 0.21);
+            group.add(visor);
+
+            // Đế / Bánh xe
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16), darkMat);
+            base.position.y = 0.1;
+            base.castShadow = true;
+            group.add(base);
+
+            // Hàm hỗ trợ đổi màu lúc đang chơi
+            group.userData = { bodyMat };
+            return group;
+        }
+
+        // Texture Mặt Sàn
         function createTileMaterial(letter, bgColorHex, textColorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 256;
@@ -274,21 +323,9 @@
         }
 
         const matBlank = createTileMaterial('', '#444444', '#fff');
-        const matsNormal = {
-            'X': createTileMaterial('X', '#333333', '#ffffff'),
-            'Y': createTileMaterial('Y', '#333333', '#ffffff'),
-            'Z': createTileMaterial('Z', '#333333', '#ffffff')
-        };
-        const matsSafe = {
-            'X': createTileMaterial('X', '#222222', '#00ff00'),
-            'Y': createTileMaterial('Y', '#222222', '#00ff00'),
-            'Z': createTileMaterial('Z', '#222222', '#00ff00')
-        };
-        const matsDanger = {
-            'X': createTileMaterial('X', '#660000', '#ff3333'),
-            'Y': createTileMaterial('Y', '#660000', '#ff3333'),
-            'Z': createTileMaterial('Z', '#660000', '#ff3333')
-        };
+        const matsNormal = { 'X': createTileMaterial('X', '#333333', '#ffffff'), 'Y': createTileMaterial('Y', '#333333', '#ffffff'), 'Z': createTileMaterial('Z', '#333333', '#ffffff') };
+        const matsSafe = { 'X': createTileMaterial('X', '#222222', '#00ff00'), 'Y': createTileMaterial('Y', '#222222', '#00ff00'), 'Z': createTileMaterial('Z', '#222222', '#00ff00') };
+        const matsDanger = { 'X': createTileMaterial('X', '#660000', '#ff3333'), 'Y': createTileMaterial('Y', '#660000', '#ff3333'), 'Z': createTileMaterial('Z', '#660000', '#ff3333') };
 
         const tiles = [];
         const floorGroup = new THREE.Group();
@@ -299,14 +336,14 @@
                 const mesh = new THREE.Mesh(tileGeo, matBlank);
                 mesh.position.set((x - Math.floor(gridSize/2)) * tileSize, -0.25, (z - Math.floor(gridSize/2)) * tileSize);
                 mesh.receiveShadow = true; 
-                mesh.userData = { targetY: -0.25, isDanger: false, index: tiles.length }; // Lưu index để dễ đối chiếu mảng
+                mesh.userData = { targetY: -0.25, isDanger: false, index: tiles.length }; 
                 floorGroup.add(mesh); tiles.push(mesh);
             }
         }
         scene.add(floorGroup);
         const playerMeshes = {};
 
-        // --- AUTH VÀ ĐIỀU HƯỚNG ---
+        // --- ĐĂNG NHẬP FIREBASE & ĐỔI MÀU ---
         signInAnonymously(auth).then((userCred) => {
             myId = userCred.user.uid;
             showScreen('mainMenu');
@@ -321,11 +358,20 @@
             myName = document.getElementById('myPlayerName').value.trim() || "Người Chơi";
             showScreen('joinRoom'); listenToRoomList(); 
         };
+        
+        // Sự kiện Đổi Màu Robot trong Sảnh
+        document.getElementById('colorPicker').addEventListener('change', async (e) => {
+            if (!currentRoomId || !myId) return;
+            const hexVal = parseInt(e.target.value.replace('#', '0x'), 16);
+            myPlayer.color = hexVal;
+            await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}.color`]: hexVal });
+        });
+
         document.getElementById('crPrivacy').onchange = (e) => { document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public'); };
         document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
         document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
-        // --- XỬ LÝ: TẠO PHÒNG VÀ VÀO PHÒNG ---
+        // --- TẠO PHÒNG ---
         document.getElementById('btnCreateRoomSubmit').onclick = async () => {
             const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
             let maxP = parseInt(document.getElementById('crMaxPlayers').value);
@@ -335,18 +381,20 @@
 
             if (isPrivate && pass === "") return alert("Vui lòng nhập mật khẩu cho phòng riêng tư!");
             const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const myColor = Math.floor(Math.random()*16777215);
+            const startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
+            myPlayer.color = startColor;
             
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
                     gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, holes: [], round: 1 },
-                    players: { [myId]: { name: myName, x: 0, z: 0, color: myColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
+                    players: { [myId]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: true, score: 0, kills: 0, pushedAt: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
             } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
         };
 
+        // --- DANH SÁCH PHÒNG ---
         let unsubscribeRoomList = null;
         function listenToRoomList() {
             const roomListUI = document.getElementById('roomListUI');
@@ -384,9 +432,11 @@
                 if (inputPass === null) return;
                 if (inputPass !== roomData.password) return alert("Mật khẩu không chính xác!");
             }
-            const myColor = Math.floor(Math.random()*16777215);
+            const startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
+            myPlayer.color = startColor;
+            
             try {
-                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: myColor, isAlive: true, isHost: false, score: 0, kills: 0 } });
+                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: false, score: 0, kills: 0, pushedAt: 0 } });
                 if(unsubscribeRoomList) unsubscribeRoomList();
                 enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
             } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
@@ -430,15 +480,25 @@
                 else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) stopGameClient();
                 else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
+                // KIỂM TRA BẢN THÂN CÓ BỊ ĐẨY BỞI NGƯỜI KHÁC KHÔNG
+                if (gameActive && data.players[myId]) {
+                    const serverMe = data.players[myId];
+                    if (serverMe.pushedAt && serverMe.pushedAt !== myPlayer.lastPushedAt) {
+                        // Tôi vừa bị đẩy văng! (Ghi đè vị trí local bằng vị trí server cung cấp)
+                        myPlayer.x = serverMe.x;
+                        myPlayer.z = serverMe.z;
+                        myPlayer.lastPushedAt = serverMe.pushedAt;
+                    }
+                }
+
                 // LẮNG NGHE STATE GAME
                 if (data.status === 'PLAYING' && data.gameState) {
                     const state = data.gameState; let oldPhase = serverPhase;
-                    
                     serverPhase = state.phase; 
                     serverTargetLetter = state.targetLetter || '?';
                     serverSafeTiles = state.safeTiles || []; 
                     serverDangerLetters = state.dangerLetters || {}; 
-                    serverHoles = state.holes || []; // Đồng bộ danh sách hố mặc định
+                    serverHoles = state.holes || []; 
                     serverRound = state.round || 1;
 
                     if (oldPhase === 'DROP' && serverPhase === 'IDLE' && myPlayer.isAlive) {
@@ -448,6 +508,54 @@
             });
         }
 
+        // --- CƠ CHẾ SÓNG XUNG KÍCH (PUSH) ---
+        window.addEventListener('mousedown', (e) => {
+            if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
+            const now = Date.now();
+            if (now - lastPushTime < pushCooldown) return;
+            
+            lastPushTime = now;
+            
+            // UI Cooldown
+            const statusUI = document.getElementById('pushStatus');
+            statusUI.innerText = "SÓNG ĐẨY: ĐANG HỒI...";
+            statusUI.style.color = "#888";
+            setTimeout(() => { if (gameActive) { statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; statusUI.style.color = "#00ff00"; } }, pushCooldown);
+
+            // Vòng hiệu ứng 3D
+            const geo = new THREE.RingGeometry(0.5, 3, 32);
+            const mat = new THREE.MeshBasicMaterial({ color: myPlayer.color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+            const ring = new THREE.Mesh(geo, mat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(myPlayer.x, -0.15, myPlayer.z); // Đặt hơi chìm dưới chân
+            scene.add(ring);
+            pushEffects.push({ mesh: ring, scale: 1, opacity: 0.8 });
+
+            // Tính va chạm đẩy người khác
+            for (let uid in players) {
+                if (uid === myId || !players[uid].isAlive) continue;
+                
+                const p = players[uid];
+                const dx = p.x - myPlayer.x;
+                const dz = p.z - myPlayer.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+
+                if (dist < 3.5) { // Bán kính đẩy
+                    let pushPower = 3.5 - (dist * 0.7); // Càng gần văng càng mạnh
+                    const nx = (dx / dist) * pushPower;
+                    const nz = (dz / dist) * pushPower;
+                    
+                    // Ghi thẳng vị trí văng lên server (Kèm cờ createdAt để máy nạn nhân nhận biết)
+                    updateDoc(doc(db, "rooms", currentRoomId), {
+                        [`players.${uid}.x`]: p.x + nx,
+                        [`players.${uid}.z`]: p.z + nz,
+                        [`players.${uid}.pushedAt`]: now
+                    }).catch(()=>{});
+                }
+            }
+        });
+
+        // HỆ THỐNG CHAT (Giữ nguyên)
         function listenToChat() {
             const q = query(collection(db, "rooms", currentRoomId, "chat"), orderBy("time", "desc"), limit(20));
             unsubscribeChat = onSnapshot(q, (snap) => {
@@ -459,13 +567,11 @@
                 document.getElementById('inGameChatMessages').scrollTop = document.getElementById('inGameChatMessages').scrollHeight;
             });
         }
-
         async function sendMessage(text, isSys = false) {
             if (!text.trim() || !currentRoomId) return;
             await addDoc(collection(db, "rooms", currentRoomId, "chat"), { text: text, sender: isSys ? "Hệ thống" : myName, time: Date.now(), sys: isSys });
         }
         const sendSystemMessage = (t) => sendMessage(t, true);
-
         document.getElementById('btnSendLobbyChat').onclick = () => { sendMessage(document.getElementById('lobbyChatInput').value); document.getElementById('lobbyChatInput').value = ''; };
         document.getElementById('lobbyChatInput').onkeypress = (e) => { if(e.key === 'Enter') document.getElementById('btnSendLobbyChat').click(); };
 
@@ -478,11 +584,9 @@
             if (e.key === 'Enter' && gameActive) { inGameChatInput.focus(); return; }
             if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true;
         });
-        window.addEventListener('keyup', (e) => {
-            if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
-        });
+        window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
 
-        // --- MÁY CHỦ (HOST LOGIC) PHÂN TÁCH 2 CƠ CHẾ ---
+        // --- MÁY CHỦ (HOST LOGIC) ---
         document.getElementById('btnStartGame').onclick = async () => {
             let updates = { status: 'PLAYING', "gameState.phase": "IDLE", "gameState.round": 1, "gameState.holes": [] };
             for (let p in players) {
@@ -500,7 +604,6 @@
             hostGameLoop = setInterval(async () => {
                 if (!gameActive || !isHost) return clearInterval(hostGameLoop);
 
-                // KIỂM TRA ĐIỀU KIỆN KẾT THÚC GAME LIÊN TỤC MỖI GIÂY
                 let aliveCount = Object.values(players).filter(p => p.isAlive).length;
                 let totalPlayers = Object.keys(players).length;
 
@@ -520,12 +623,9 @@
                     serverPhase = 'LOCKED'; phaseTime = 0;
                     let target = lettersList[Math.floor(Math.random()*lettersList.length)];
                     
-                    // Cơ chế 2: Cân bằng số lượng chữ an toàn trên phần Gạch còn lại
                     let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
-                    
-                    // Tính 40% diện tích sàn hiện tại làm ô an toàn
                     let safeCount = Math.floor(activeTiles.length * 0.4);
-                    safeCount = Math.max(2, safeCount); // Đảm bảo luôn có ít nhất 2 ô sống sót
+                    safeCount = Math.max(2, safeCount); 
                     
                     let safeArr = [];
                     for(let i=0; i<safeCount; i++) {
@@ -535,9 +635,8 @@
                         activeTiles.splice(rIdx, 1);
                     }
                     
-                    // Gắn tĩnh chữ sai cho các ô sụp đổ
                     let dLetters = {};
-                    activeTiles.forEach(idx => { // Các ô còn lại không được chọn an toàn chính là ô Danger
+                    activeTiles.forEach(idx => { 
                         let wLetters = lettersList.filter(l => l !== target);
                         dLetters[idx] = wLetters[Math.floor(Math.random()*wLetters.length)];
                     });
@@ -552,11 +651,10 @@
                     await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase });
                 }
                 else if (serverPhase === 'DROP' && phaseTime >= 3) {
-                    // CHUẨN BỊ VÒNG MỚI & CƠ CHẾ 1: TẠO HỐ MẶC ĐỊNH CHO VÒNG SAU
                     serverRound++;
                     
-                    let holeCount = (serverRound - 1) * 4; // Vòng 1:0, V2:4, V3:8, V4:12...
-                    if (holeCount > 75) holeCount = 75; // Giữ lại ít nhất vài ô cuối cùng để chơi
+                    let holeCount = (serverRound - 1) * 4; 
+                    if (holeCount > 75) holeCount = 75; 
                     
                     let allIndices = Array.from({length: 81}, (_, i) => i);
                     let newHoles = [];
@@ -568,9 +666,7 @@
 
                     serverPhase = 'IDLE'; phaseTime = 0;
                     await updateDoc(doc(db, "rooms", currentRoomId), { 
-                        "gameState.phase": serverPhase, 
-                        "gameState.round": serverRound,
-                        "gameState.holes": newHoles
+                        "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": newHoles
                     });
                 }
             }, 1000);
@@ -580,7 +676,11 @@
         function startGameClient(roomName) {
             showScreen('');
             document.getElementById('gameUI').style.display = 'block';
-            document.getElementById('roomCodeDisplay').innerText = `Phòng: ${roomName}`;
+            document.getElementById('gameRoomNameText').innerText = `Phòng: ${roomName}`;
+            
+            document.getElementById('pushStatus').innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)";
+            document.getElementById('pushStatus').style.color = "#00ff00";
+
             gameActive = true; document.getElementById('statusText').style.display = 'none';
 
             myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
@@ -669,20 +769,34 @@
                 if (id === myId) continue;
                 const pData = players[id];
                 if (!playerMeshes[id]) {
-                    playerMeshes[id] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: pData.color }));
-                    playerMeshes[id].castShadow = true; scene.add(playerMeshes[id]);
+                    playerMeshes[id] = createRobotModel(pData.color); // GỌI HÀM TẠO ROBOT THAY CHO CUBE
+                    scene.add(playerMeshes[id]);
+                } else {
+                    // Update màu sắc nếu họ đổi trong sảnh
+                    if (playerMeshes[id].userData.bodyMat.color.getHex() !== pData.color) {
+                        playerMeshes[id].userData.bodyMat.color.setHex(pData.color);
+                    }
                 }
                 playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.1);
                 playerMeshes[id].position.z = THREE.MathUtils.lerp(playerMeshes[id].position.z, pData.z, 0.1);
-                playerMeshes[id].position.y = pData.isAlive ? 0.5 : -2;
+                playerMeshes[id].position.y = pData.isAlive ? 0 : -2.5; // Y=0 vì origin của Robot nằm dưới chân
             }
         }
 
-        // --- CẬP NHẬT RENDER LOOP THEO CƠ CHẾ HỐ MỚI ---
+        // --- CẬP NHẬT RENDER LOOP ---
         let frameCount = 0;
         function animate() {
             requestAnimationFrame(animate);
             frameCount++;
+
+            // Render hiệu ứng Sóng xung kích
+            pushEffects.forEach((eff, index) => {
+                eff.scale += 0.15;
+                eff.opacity -= 0.03;
+                eff.mesh.scale.set(eff.scale, eff.scale, eff.scale);
+                eff.mesh.material.opacity = eff.opacity;
+                if (eff.opacity <= 0) { scene.remove(eff.mesh); pushEffects.splice(index, 1); }
+            });
 
             if (gameActive) {
                 const tb = document.getElementById('targetBoard');
@@ -696,13 +810,11 @@
                 else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
 
                 tiles.forEach((tile, index) => {
-                    // Ưu tiên 1: Các Hố Trống Mặc Định (Cơ chế 1)
                     if (serverHoles.includes(index)) {
                         tile.userData.targetY = -2.5; 
                         tile.material = matBlank;
                     } 
                     else {
-                        // Ưu tiên 2: Gameplay Bảng Chữ Cái trên Sàn Còn Lại (Cơ chế 2)
                         if (serverPhase === 'IDLE') {
                             tile.userData.targetY = -0.25; tile.material = matBlank; 
                         } 
@@ -725,12 +837,10 @@
                             } else {
                                 let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
                                 tile.material = matsDanger[dl]; 
-                                tile.userData.targetY = -2.5; // Các chữ sai sập xuống
+                                tile.userData.targetY = -2.5; 
                             }
                         }
                     }
-                    
-                    // Di chuyển mượt mà lên xuống
                     tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
                 });
 
@@ -748,20 +858,36 @@
                 }
 
                 if (!playerMeshes[myId]) {
-                    playerMeshes[myId] = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: myPlayer.color }));
-                    playerMeshes[myId].castShadow = true; scene.add(playerMeshes[myId]);
+                    playerMeshes[myId] = createRobotModel(myPlayer.color);
+                    scene.add(playerMeshes[myId]);
                 }
                 
+                // Cập nhật góc nhìn (xoay) Robot dựa vào hướng di chuyển
+                if (keys.w || keys.s || keys.a || keys.d) {
+                    let moveAngle = Math.atan2( (keys.x ? 1 : 0) - (keys.a ? 1 : 0), (keys.s ? 1 : 0) - (keys.w ? 1 : 0) );
+                    if (keys.w && !keys.a && !keys.s && !keys.d) moveAngle = Math.PI; // Up
+                    if (keys.s && !keys.a && !keys.w && !keys.d) moveAngle = 0; // Down
+                    if (keys.a && !keys.w && !keys.s && !keys.d) moveAngle = -Math.PI / 2; // Left
+                    if (keys.d && !keys.w && !keys.s && !keys.a) moveAngle = Math.PI / 2; // Right
+                    
+                    if (keys.w && keys.a) moveAngle = -Math.PI * 0.75;
+                    if (keys.w && keys.d) moveAngle = Math.PI * 0.75;
+                    if (keys.s && keys.a) moveAngle = -Math.PI * 0.25;
+                    if (keys.s && keys.d) moveAngle = Math.PI * 0.25;
+                    
+                    playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, moveAngle, 0.2);
+                }
+
                 playerMeshes[myId].position.x = myPlayer.x;
                 playerMeshes[myId].position.z = myPlayer.z;
                 
                 if (myPlayer.isAlive) {
-                    playerMeshes[myId].position.y = 0.5;
+                    playerMeshes[myId].position.y = 0; // Origin mới nằm ở bánh xe
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
                     camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.05);
                 } else {
-                    playerMeshes[myId].position.y = -2; 
+                    playerMeshes[myId].position.y = -2.5; 
                     camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, 0.02);
                     camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, 0.02);
                     camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, 0.02); 
@@ -779,8 +905,6 @@
                 if (dist < minDist) { minDist = dist; closestTile = tile; }
             });
             
-            // THUẬT TOÁN FIX LỖI: Chỉ chết khi đứng trên ô CÓ MỤC TIÊU sập sâu (-2.5) VÀ đang trực tiếp rơi xuống (-1.5)
-            // Giúp ngăn ngừa lỗi bị chết khi các ô đang từ đáy vực trồi lên ở đầu mỗi vòng.
             if (closestTile && closestTile.userData.targetY === -2.5 && closestTile.position.y < -1.5) {
                 myPlayer.isAlive = false; 
                 const st = document.getElementById('statusText');
