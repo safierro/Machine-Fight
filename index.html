@@ -38,6 +38,7 @@
         }
         input:focus, select:focus { border-color: #00aaff; }
 
+        /* Khung Tên Ngay Trang Chủ */
         #myPlayerName { text-align: center; font-size: 22px; font-weight: bold; border-color: #0088ff; background: rgba(0, 136, 255, 0.1); }
 
         /* Bảng Danh Sách Phòng */
@@ -81,7 +82,10 @@
         #pushStatus { font-size: 14px; color: #00ff00; margin-top: 5px; font-weight: bold; } 
         
         #btnLeave { padding: 5px 15px; width: auto; margin: 0; font-size: 16px; pointer-events: auto; }
-        #targetBoard { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 80px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: 0.3s; }
+        
+        /* Bảng Mục Tiêu */
+        #targetBoard { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 80px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: border-color 0.3s; min-height: 120px; min-width: 150px; display: flex; align-items: center; justify-content: center; }
+        
         #statusText { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; color: #ff0000; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 20px #ff0000; display: none; z-index: 90;}
         #inGameChatContainer { position: absolute; bottom: 20px; left: 20px; width: 350px; background: rgba(0,0,0,0.4); border-radius: 5px; display: flex; flex-direction: column; pointer-events: auto; border: 1px solid #333; }
         #inGameChatMessages { height: 150px; overflow-y: auto; padding: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px; }
@@ -179,7 +183,7 @@
             </div>
             <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
         </div>
-        <div id="targetBoard">?</div>
+        <div id="targetBoard"></div> <!-- Đã xóa dấu chấm hỏi mặc định -->
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
         <div id="inGameChatContainer">
             <div id="inGameChatMessages"></div>
@@ -217,24 +221,24 @@
         let hostGameLoop = null;
 
         let serverPhase = 'IDLE'; 
-        let serverTargetLetter = '?';
+        let serverTargetLetter = ''; 
         let serverSafeTiles = [];
         let serverDangerLetters = {}; 
         let serverHoles = []; 
         let serverRound = 1;
 
-        // Trạng thái Vật Lý Bản Thân
+        // TỐC ĐỘ DI CHUYỂN MỚI (CHẬM LẠI TỪ 0.08 -> 0.05)
         let myPlayer = { 
             name: "Player", 
             x: 0, z: 0, 
-            vx: 0, vz: 0, // Vận tốc bị đẩy văng
+            vx: 0, vz: 0, 
             color: 0xffffff, 
             isAlive: true, 
             score: 0, kills: 0, 
-            lastPushTime: 0 // Thời điểm bị đẩy gần nhất
+            lastPushTime: 0 
         };
 
-        const moveSpeed = 0.08; 
+        const moveSpeed = 0.05; 
         const keys = { w: false, a: false, s: false, d: false };
         const gridSize = 9;
         const tileSize = 2;
@@ -278,7 +282,6 @@
         const spotLight = new THREE.SpotLight(0xfffaee, 1.5);
         spotLight.position.set(0, 30, 0); spotLight.castShadow = true; scene.add(spotLight);
 
-        // HÀM TẠO TÊN LƠ LỬNG (NAME TAG)
         function createNameSprite(name, colorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 128;
@@ -298,7 +301,6 @@
             return sprite;
         }
 
-        // HÀM TẠO MODEL ROBOT CÓ TÊN
         function createRobotModel(colorHex, playerName) {
             const group = new THREE.Group();
             const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6, metalness: 0.3 });
@@ -317,7 +319,6 @@
             const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16), darkMat);
             base.position.y = 0.1; base.castShadow = true; group.add(base);
 
-            // Thêm Tên trên đầu
             const nameSprite = createNameSprite(playerName, colorHex);
             nameSprite.position.y = 2.0; 
             group.add(nameSprite);
@@ -404,8 +405,8 @@
             try {
                 await setDoc(doc(db, "rooms", newRoomId), {
                     roomName: name, maxPlayers: maxP, isPrivate: isPrivate, password: pass, status: 'LOBBY', hostId: myId,
-                    gameState: { phase: 'IDLE', targetLetter: '?', safeTiles: [], dangerLetters: {}, holes: [], round: 1 },
-                    players: { [myId]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: true, score: 0, kills: 0 } }
+                    gameState: { phase: 'IDLE', targetLetter: '', safeTiles: [], dangerLetters: {}, holes: [], round: 1 },
+                    players: { [myId]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: true, score: 0, kills: 0, pushedAt: 0 } }
                 });
                 enterLobby(newRoomId, name, true, maxP);
             } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
@@ -452,7 +453,7 @@
             myPlayer.color = startColor;
             
             try {
-                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: false, score: 0, kills: 0 } });
+                await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: false, score: 0, kills: 0, pushedAt: 0 } });
                 if(unsubscribeRoomList) unsubscribeRoomList();
                 enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
             } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
@@ -496,22 +497,19 @@
                 else if (data.status === 'LOBBY' && !screens.lobby.classList.contains('hidden') === false) stopGameClient();
                 else if (data.status === 'GAMEOVER' && gameActive) showGameOver();
 
-                // LẮNG NGHE TÍN HIỆU "BỊ ĐẨY" TỪ MÁY CHỦ
                 if (gameActive && data.players[myId]) {
                     const serverMe = data.players[myId];
                     if (serverMe.push && serverMe.push.time !== myPlayer.lastPushTime) {
-                        // TÔI VỪA BỊ ĐẨY! Áp dụng Vận tốc ngay lập tức ở Client
                         myPlayer.lastPushTime = serverMe.push.time;
                         myPlayer.vx = serverMe.push.nx;
                         myPlayer.vz = serverMe.push.nz;
                     }
                 }
 
-                // LẮNG NGHE STATE GAME
                 if (data.status === 'PLAYING' && data.gameState) {
                     const state = data.gameState; let oldPhase = serverPhase;
                     serverPhase = state.phase; 
-                    serverTargetLetter = state.targetLetter || '?';
+                    serverTargetLetter = state.targetLetter || ''; 
                     serverSafeTiles = state.safeTiles || []; 
                     serverDangerLetters = state.dangerLetters || {}; 
                     serverHoles = state.holes || []; 
@@ -545,7 +543,6 @@
             scene.add(ring);
             pushEffects.push({ mesh: ring, scale: 1, opacity: 0.8 });
 
-            // Gửi lực đẩy cho các nạn nhân
             for (let uid in players) {
                 if (uid === myId || !players[uid].isAlive) continue;
                 
@@ -555,12 +552,10 @@
                 const dist = Math.sqrt(dx*dx + dz*dz);
 
                 if (dist < 3.5 && dist > 0) { 
-                    // Lực đẩy từ 0.5 đến 1.5 đơn vị vận tốc
                     let pushPower = Math.max(0.5, 1.8 - dist * 0.4); 
                     const nx = (dx / dist) * pushPower;
                     const nz = (dz / dist) * pushPower;
                     
-                    // Ghi TÍN HIỆU đẩy lên máy chủ, máy nạn nhân sẽ tự đọc tín hiệu này để trượt đi
                     updateDoc(doc(db, "rooms", currentRoomId), {
                         [`players.${uid}.push`]: { nx: nx, nz: nz, time: now }
                     }).catch(()=>{});
@@ -630,7 +625,7 @@
 
                 if (serverPhase === 'IDLE' && phaseTime >= 3) {
                     serverPhase = 'ROLLING'; phaseTime = 0;
-                    await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.targetLetter": '?' });
+                    await updateDoc(doc(db, "rooms", currentRoomId), { "gameState.phase": serverPhase, "gameState.targetLetter": '' }); // Bỏ dấu chấm hỏi
                 } 
                 else if (serverPhase === 'ROLLING' && phaseTime >= 4) {
                     serverPhase = 'LOCKED'; phaseTime = 0;
@@ -698,7 +693,7 @@
 
             myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
             myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
-            myPlayer.vx = 0; myPlayer.vz = 0; // Đặt lại Vận tốc đẩy
+            myPlayer.vx = 0; myPlayer.vz = 0; 
             myPlayer.isAlive = true;
             
             camera.position.set(20, 30, 20); camera.lookAt(scene.position);
@@ -793,7 +788,6 @@
                     }
                 }
                 
-                // NỘI SUY MƯỢT MÀ HƠN (Tăng lerp từ 0.1 -> 0.3)
                 playerMeshes[id].position.x = THREE.MathUtils.lerp(playerMeshes[id].position.x, pData.x, 0.3);
                 playerMeshes[id].position.z = THREE.MathUtils.lerp(playerMeshes[id].position.z, pData.z, 0.3);
                 playerMeshes[id].position.y = pData.isAlive ? 0 : -2.5; 
@@ -816,14 +810,27 @@
 
             if (gameActive) {
                 const tb = document.getElementById('targetBoard');
-                tb.innerText = serverPhase === 'IDLE' ? `VÒNG ${serverRound}` : serverTargetLetter;
                 
-                if (serverPhase === 'IDLE') tb.style.borderColor = '#444';
-                else if (serverPhase === 'ROLLING') {
-                    if (frameCount % 20 === 0) tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
-                    tb.style.borderColor = '#00aaff';
+                if (serverPhase === 'IDLE') {
+                    tb.innerText = `VÒNG ${serverRound}`;
+                    tb.style.borderColor = '#444';
+                    tb.style.opacity = 1; // Hiện bình thường
                 }
-                else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') tb.style.borderColor = '#00ff00';
+                else if (serverPhase === 'ROLLING') {
+                    // Cập nhật ngẫu nhiên chữ CHẬM LẠI (mỗi 40 khung hình)
+                    if (frameCount % 40 === 0) {
+                        tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
+                    }
+                    tb.style.borderColor = '#00aaff';
+                    
+                    // HIỆU ỨNG THOẮT ẨN THOẮT HIỆN: Cứ 20 khung hình thì ẩn/hiện 1 lần
+                    tb.style.opacity = (frameCount % 20 < 10) ? 0 : 1; 
+                }
+                else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
+                    tb.innerText = serverTargetLetter;
+                    tb.style.borderColor = '#00ff00';
+                    tb.style.opacity = 1; // Khóa chữ, hiện Rõ Ràng
+                }
 
                 tiles.forEach((tile, index) => {
                     if (serverHoles.includes(index)) {
@@ -836,7 +843,7 @@
                         } 
                         else if (serverPhase === 'ROLLING') {
                             tile.userData.targetY = -0.25; 
-                            if (frameCount % 20 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                            if (frameCount % 40 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
                         }
                         else if (serverPhase === 'LOCKED') {
                             tile.userData.targetY = -0.25;
@@ -861,17 +868,14 @@
                 });
 
                 if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
-                    // ÁP DỤNG VẬN TỐC ĐẨY (Từ kỹ năng push)
                     myPlayer.x += myPlayer.vx;
                     myPlayer.z += myPlayer.vz;
                     
-                    // Ma sát giảm dần vận tốc văng
                     myPlayer.vx *= 0.85;
                     myPlayer.vz *= 0.85;
                     if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
                     if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
 
-                    // Di chuyển phím
                     if (keys.w) myPlayer.z -= moveSpeed;
                     if (keys.s) myPlayer.z += moveSpeed;
                     if (keys.a) myPlayer.x -= moveSpeed;
@@ -890,7 +894,6 @@
                 }
                 
                 if (keys.w || keys.s || keys.a || keys.d || Math.abs(myPlayer.vx) > 0.1 || Math.abs(myPlayer.vz) > 0.1) {
-                    // Cập nhật hướng xoay của bản thân
                     let moveAngle = Math.atan2( (keys.x ? 1 : 0) - (keys.a ? 1 : 0), (keys.s ? 1 : 0) - (keys.w ? 1 : 0) );
                     if (keys.w && !keys.a && !keys.s && !keys.d) moveAngle = Math.PI; 
                     if (keys.s && !keys.a && !keys.w && !keys.d) moveAngle = 0; 
@@ -944,7 +947,6 @@
         let lastUpdate = 0;
         async function uploadMyPosition() {
             let now = Date.now();
-            // GỬI DATA LÊN SERVER VỚI TẦN SUẤT CAO HƠN (40ms ~ 25FPS)
             if (now - lastUpdate > 40 || !myPlayer.isAlive) { 
                 lastUpdate = now;
                 await updateDoc(doc(db, "rooms", currentRoomId), {
