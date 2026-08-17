@@ -43,7 +43,6 @@ let myPlayer = {
     lastPushTime: 0 
 };
 
-// Cập nhật tốc độ di chuyển chậm lại
 const moveSpeed = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
@@ -432,9 +431,11 @@ function startHostLoop() {
             serverPhase = 'LOCKED'; phaseTime = 0;
             let target = lettersList[Math.floor(Math.random()*lettersList.length)];
             
-            // Logic Cơ chế 2: Cân bằng số lượng chữ an toàn trên phần Gạch còn lại
             let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
-            let safeCount = Math.floor(activeTiles.length * 0.4);
+            
+            // CƠ CHẾ 2: Giảm dần tỷ lệ an toàn (bắt đầu 40%, trừ 5% mỗi vòng)
+            let safeRatio = Math.max(0.1, 0.4 - (serverRound - 1) * 0.05);
+            let safeCount = Math.floor(activeTiles.length * safeRatio);
             safeCount = Math.max(2, safeCount); 
             
             let safeArr = [];
@@ -463,27 +464,21 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            // CƠ CHẾ SỤT LÚN MỚI (Machine Party mechanic)
-            // Lọc ra các ô ĐÃ SẬP ở round này (không phải SafeTiles, cũng không phải lỗ có sẵn)
-            let droppedTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
+            // CƠ CHẾ 1: Tăng số lượng hố (+6 mỗi round)
+            let holeCount = (serverRound - 1) * 6; 
+            if (holeCount > 72) holeCount = 72; // Đảm bảo luôn còn ít nhất 9 ô để nhảy
             
+            let allIndices = Array.from({length: 81}, (_, i) => i);
             let newHoles = [];
-            let holesToAdd = 4; // Cộng dồn 4 ô mỗi round
-            
-            for(let i=0; i < holesToAdd; i++) {
-                if (droppedTiles.length === 0) break;
-                let rIdx = Math.floor(Math.random() * droppedTiles.length);
-                newHoles.push(droppedTiles[rIdx]);
-                droppedTiles.splice(rIdx, 1); // Tránh bị trùng
+            for(let i=0; i < holeCount; i++) {
+                let rIdx = Math.floor(Math.random() * allIndices.length);
+                newHoles.push(allIndices[rIdx]);
+                allIndices.splice(rIdx, 1);
             }
-
-            // Gộp với hố của round trước
-            let updatedHoles = [...serverHoles, ...newHoles];
-            if (updatedHoles.length > 75) updatedHoles = updatedHoles.slice(0, 75); // Giới hạn an toàn
 
             serverPhase = 'IDLE'; phaseTime = 0;
             await updateDoc(doc(db, "rooms", currentRoomId), { 
-                "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": updatedHoles
+                "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": newHoles
             });
         }
     }, 1000);
@@ -602,7 +597,6 @@ function sync3DPlayers() {
     }
 }
 
-// --- CẬP NHẬT RENDER LOOP ---
 let frameCount = 0;
 function animate() {
     requestAnimationFrame(animate);
@@ -625,20 +619,17 @@ function animate() {
             tb.style.opacity = 1; 
         }
         else if (serverPhase === 'ROLLING') {
-            // Thay đổi chữ ngẫu nhiên TỐC ĐỘ CHẬM HƠN
             if (frameCount % 60 === 0) {
                 tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
             }
             tb.style.borderColor = '#00aaff';
             
-            // HIỆU ỨNG FADE IN & FADE OUT MƯỢT MÀ DÙNG TOÁN HỌC (Math.sin)
-            // Giá trị opacity sẽ lướt nhẹ nhàng từ 0.2 đến 1.0 thay vì chớp tắt đột ngột
             tb.style.opacity = 0.2 + 0.8 * Math.abs(Math.sin(frameCount * 0.05)); 
         }
         else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
             tb.innerText = serverTargetLetter;
             tb.style.borderColor = '#00ff00';
-            tb.style.opacity = 1; // Khóa lại thì hiện rực rỡ
+            tb.style.opacity = 1; 
         }
 
         tiles.forEach((tile, index) => {
