@@ -152,7 +152,7 @@ function createTileMaterial(letter, bgColorHex, textColorHex) {
     return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
 }
 
-// BẢO ĐẢM TẤT CẢ Ô GẠCH (AN TOÀN HAY BẪY) ĐỀU CÙNG 1 MÀU (CHỮ TRẮNG, NỀN XÁM ĐẬM)
+// BẢO ĐẢM TẤT CẢ Ô GẠCH (AN TOÀN HAY BẪY) ĐỀU CÙNG 1 MÀU (CHỮ TRẮNG, NỀN XÁM ĐẬM) TĂNG ĐỘ KHÓ
 const matBlank = createTileMaterial('', '#444444', '#fff');
 const matsNormal = { 'X': createTileMaterial('X', '#333333', '#ffffff'), 'Y': createTileMaterial('Y', '#333333', '#ffffff'), 'Z': createTileMaterial('Z', '#333333', '#ffffff') };
 
@@ -176,7 +176,7 @@ const playerMeshes = {};
 signInAnonymously(auth).then((userCred) => {
     myId = userCred.user.uid;
     showScreen('mainMenu');
-}).catch(err => alert("Lỗi kết nối máy chủ: " + err.message));
+}).catch(err => alert("Lỗi kết nối máy chủ Firebase: Vui lòng F5 làm mới lại trang. \nChi tiết: " + err.message));
 
 document.getElementById('navCreateRoom').onclick = () => {
     myName = document.getElementById('myPlayerName').value.trim() || "Người Chơi";
@@ -192,14 +192,18 @@ document.getElementById('colorPicker').addEventListener('change', async (e) => {
     if (!currentRoomId || !myId) return;
     const hexVal = parseInt(e.target.value.replace('#', '0x'), 16);
     myPlayer.color = hexVal;
-    await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}.color`]: hexVal });
+    await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}.color`]: hexVal }).catch(()=>{});
 });
 
 document.getElementById('crPrivacy').onchange = (e) => { document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public'); };
 document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
 document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
-document.getElementById('btnCreateRoomSubmit').onclick = async () => {
+// CHỐNG SPAM CLICK LÚC TẠO PHÒNG
+document.getElementById('btnCreateRoomSubmit').onclick = async function() {
+    const btn = this;
+    if (btn.disabled) return; // Nếu đang xử lý thì chặn click tiếp
+    
     const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
     let maxP = parseInt(document.getElementById('crMaxPlayers').value);
     if (isNaN(maxP) || maxP < 2 || maxP > 8) maxP = 8;
@@ -207,6 +211,11 @@ document.getElementById('btnCreateRoomSubmit').onclick = async () => {
     const pass = document.getElementById('crPassword').value.trim();
 
     if (isPrivate && pass === "") return alert("Vui lòng nhập mật khẩu cho phòng riêng tư!");
+    
+    // UI Phản hồi
+    btn.disabled = true;
+    btn.innerText = "ĐANG TẠO...";
+
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     const startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
     myPlayer.color = startColor;
@@ -218,7 +227,12 @@ document.getElementById('btnCreateRoomSubmit').onclick = async () => {
             players: { [myId]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: true, score: 0, kills: 0, pushedAt: 0 } }
         });
         enterLobby(newRoomId, name, true, maxP);
-    } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
+    } catch (error) { 
+        alert("Lỗi khi tạo phòng: Do bạn chưa cấp quyền Firebase Database (Security Rules) hoặc lỗi mạng.\n\nChi tiết: " + error.message); 
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "TẠO VÀ VÀO PHÒNG";
+    }
 };
 
 // --- QUẢN LÝ DANH SÁCH PHÒNG (DỌN DẸP GHOST ROOM / PHÒNG BỊ LỖI) ---
@@ -255,18 +269,26 @@ function listenToRoomList() {
                 </div>
                 <button class="btn btn-join" ${isPlaying || pCount >= maxPlayers ? 'disabled style="background:#555;"' : ''}>VÀO PHÒNG</button>
             `;
-            if (!isPlaying && pCount < maxPlayers) row.querySelector('.btn-join').onclick = () => attemptJoinRoom(rId, data);
+            if (!isPlaying && pCount < maxPlayers) {
+                const joinBtn = row.querySelector('.btn-join');
+                joinBtn.onclick = () => attemptJoinRoom(rId, data, joinBtn);
+            }
             roomListUI.appendChild(row);
         });
     });
 }
 
-async function attemptJoinRoom(rId, roomData) {
+// CHỐNG SPAM KHI VÀO PHÒNG
+async function attemptJoinRoom(rId, roomData, btnElement) {
     if (roomData.isPrivate) {
         const inputPass = prompt("Phòng này là phòng riêng tư. Nhập mật khẩu:");
         if (inputPass === null) return;
         if (inputPass !== roomData.password) return alert("Mật khẩu không chính xác!");
     }
+    
+    btnElement.disabled = true;
+    btnElement.innerText = "ĐANG VÀO...";
+
     const startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
     myPlayer.color = startColor;
     
@@ -274,7 +296,11 @@ async function attemptJoinRoom(rId, roomData) {
         await updateDoc(doc(db, "rooms", rId), { [`players.${myId}`]: { name: myName, x: 0, z: 0, color: startColor, isAlive: true, isHost: false, score: 0, kills: 0, pushedAt: 0 } });
         if(unsubscribeRoomList) unsubscribeRoomList();
         enterLobby(rId, roomData.roomName, false, roomData.maxPlayers);
-    } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
+    } catch (error) { 
+        alert("Không thể vào phòng! Phòng có thể đã đầy hoặc đã bị xóa."); 
+        btnElement.disabled = false;
+        btnElement.innerText = "VÀO PHÒNG";
+    }
 }
 
 // --- ĐỒNG BỘ PHÒNG THỜI GIAN THỰC ---
@@ -295,28 +321,18 @@ function listenToCurrentRoom() {
     unsubscribeRoom = onSnapshot(doc(db, "rooms", currentRoomId), (docSnap) => {
         if (!docSnap.exists()) return forceLeaveRoom("Phòng đã bị xóa hoặc kết thúc!");
         const data = docSnap.data();
-        players = data.players || {};
-
-        // CƠ CHẾ AUTO HOST MIGRATION (CHỐNG KẸT GAME KHI HOST RỚT MẠNG)
-        if (data.hostId && !players[data.hostId]) {
-            const remainingIds = Object.keys(players);
-            if (remainingIds.length > 0 && remainingIds[0] === myId) {
-                if (!isHost) {
-                    isHost = true;
-                    updateDoc(doc(db, "rooms", currentRoomId), { hostId: myId, [`players.${myId}.isHost`]: true });
-                    if (data.status === 'PLAYING' && !hostGameLoop) startHostLoop(); // Khởi động lại luồng nếu đang chơi
-                }
-            }
-        } else if (data.hostId === myId) {
-            isHost = true;
+        
+        if (data.hostId === myId) { 
+            isHost = true; 
+            document.getElementById('btnStartGame').style.display = 'block';
+            document.getElementById('btnReturnLobby').style.display = 'block';
+            document.getElementById('waitingHostText').style.display = 'none';
         } else {
-            isHost = false;
+            document.getElementById('btnReturnLobby').style.display = 'none';
+            document.getElementById('waitingHostText').style.display = 'block';
         }
         
-        document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
-        document.getElementById('btnReturnLobby').style.display = isHost ? 'block' : 'none';
-        document.getElementById('waitingHostText').style.display = isHost ? 'none' : 'block';
-        
+        players = data.players || {};
         document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${Object.keys(players).length}/${data.maxPlayers})`;
         updateLobbyUI(); sync3DPlayers();
 
@@ -351,7 +367,7 @@ function listenToCurrentRoom() {
     });
 }
 
-// --- CƠ CHẾ SÓNG XUNG KÍCH HÌNH NÓN ---
+// --- CƠ CHẾ SÓNG XUNG KÍCH (HÌNH NÓN) ---
 window.addEventListener('mousedown', (e) => {
     if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
     const now = Date.now();
@@ -457,7 +473,7 @@ function startHostLoop() {
 
         if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
             clearInterval(hostGameLoop);
-            await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
+            await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' }).catch(()=>{});
             return; 
         }
 
@@ -502,7 +518,7 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            let holeCountToAdd = 10;
+            let holeCountToAdd = (serverRound - 1) * 10; 
             let eligibleTilesToBreak = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
             
             let newHoles = [];
@@ -534,7 +550,6 @@ function startGameClient(roomName) {
     gameActive = true; 
     document.getElementById('statusText').style.display = 'none';
 
-    // Đặt lại tọa độ và lý tính khi ván mới
     myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
     myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
     myPlayer.vx = 0; myPlayer.vz = 0; 
@@ -568,11 +583,14 @@ async function forceLeaveRoom(reason = "") {
             await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
         } else {
             await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
-            // Không chuyển Host thủ công ở đây nữa, hàm listenToCurrentRoom của những người còn lại sẽ tự lo việc đó.
+            // CƠ CHẾ AUTO HOST MIGRATION NẾU CHỦ PHÒNG CŨ THOÁT
+            if (isHost) {
+                const remainingIds = Object.keys(players).filter(id => id !== myId);
+                if (remainingIds.length > 0) await updateDoc(doc(db, "rooms", currentRoomId), { hostId: remainingIds[0], [`players.${remainingIds[0]}.isHost`]: true }).catch(()=>{});
+            }
         }
     }
     
-    // Đặt lại trạng thái local
     currentRoomId = null; isHost = false; myPlayer.vx = 0; myPlayer.vz = 0; serverPhase = 'IDLE';
 }
 
@@ -624,7 +642,7 @@ function sync3DPlayers() {
     for (let id in players) {
         if (id === myId) continue;
         const pData = players[id];
-        if (!pData || typeof pData.x !== 'number') continue; // Bảo vệ lỗi NaN
+        if (!pData || typeof pData.x !== 'number') continue; 
 
         const displayName = pData.name || id.substring(0,4);
         
@@ -699,6 +717,7 @@ function animate() {
                 }
                 else if (serverPhase === 'LOCKED') {
                     tile.userData.targetY = -0.25;
+                    // BẢO ĐẢM TẤT CẢ ĐỀU CHUNG MÀU CHỮ TRẮNG NỀN XÁM
                     if (serverSafeTiles.includes(index)) {
                         tile.material = matsNormal[serverTargetLetter]; 
                     } else {
@@ -719,36 +738,38 @@ function animate() {
             tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
         });
 
-        if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
-            myPlayer.x += myPlayer.vx;
-            myPlayer.z += myPlayer.vz;
-            
-            myPlayer.vx *= 0.85;
-            myPlayer.vz *= 0.85;
-            if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
-            if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
+        if (myPlayer.isAlive) {
+            if (document.activeElement !== inGameChatInput) {
+                myPlayer.x += myPlayer.vx;
+                myPlayer.z += myPlayer.vz;
+                
+                myPlayer.vx *= 0.85;
+                myPlayer.vz *= 0.85;
+                if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
+                if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
 
-            let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-            let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-            
-            if (dx_dir !== 0 || dz_dir !== 0) {
-                let moveAngle = Math.atan2(dx_dir, dz_dir);
-                myPlayer.facingAngle = moveAngle;
+                let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+                let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+                
+                if (dx_dir !== 0 || dz_dir !== 0) {
+                    let moveAngle = Math.atan2(dx_dir, dz_dir);
+                    myPlayer.facingAngle = moveAngle;
+                }
+
+                if (keys.w) myPlayer.z -= moveSpeed;
+                if (keys.s) myPlayer.z += moveSpeed;
+                if (keys.a) myPlayer.x -= moveSpeed;
+                if (keys.d) myPlayer.x += moveSpeed;
+
+                const bound = (gridSize * tileSize) / 2 - 0.5;
+                myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
+                myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
+
+                checkDeath(); 
             }
-
-            if (keys.w) myPlayer.z -= moveSpeed;
-            if (keys.s) myPlayer.z += moveSpeed;
-            if (keys.a) myPlayer.x -= moveSpeed;
-            if (keys.d) myPlayer.x += moveSpeed;
-
-            const bound = (gridSize * tileSize) / 2 - 0.5;
-            myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
-            myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
-
-            checkDeath(); 
+            uploadMyPosition();
         }
 
-        // Tạo lưới bản thân nếu chưa có
         if (!playerMeshes[myId]) {
             playerMeshes[myId] = createRobotModel(myPlayer.color, myName);
             scene.add(playerMeshes[myId]);
@@ -774,8 +795,6 @@ function animate() {
             camera.lookAt(0, 0, 0); 
         }
         camera.updateProjectionMatrix();
-        
-        uploadMyPosition();
     }
     renderer.render(scene, camera);
 }
@@ -803,7 +822,6 @@ async function uploadMyPosition() {
     let now = Date.now();
     if (now - lastUpdate > 40) { 
         lastUpdate = now;
-        // Bắt lỗi NaN để tránh crash luồng cập nhật
         if (isNaN(myPlayer.x) || isNaN(myPlayer.z)) return;
         
         await updateDoc(doc(db, "rooms", currentRoomId), {
