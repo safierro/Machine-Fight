@@ -54,10 +54,9 @@ const pushEffects = [];
 let myCooldownTime = 0;
 const pushCooldown = 2000; 
 
-// KHỞI TẠO GEOMETRY NÓN TOÀN CỤC (Hướng mũi nhọn về phía +Z local)
 const coneGeo = new THREE.ConeGeometry(2, 3, 16); 
-coneGeo.rotateX(Math.PI / 2); // Xoay để chóp nón chĩa tới trước
-coneGeo.translate(0, 0, 1.5); // Dịch chuyển gốc về tâm Robot
+coneGeo.rotateX(Math.PI / 2); 
+coneGeo.translate(0, 0, 1.5); 
 
 const screens = {
     loading: document.getElementById('loadingScreen'),
@@ -152,10 +151,9 @@ function createTileMaterial(letter, bgColorHex, textColorHex) {
     return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
 }
 
+// TẤT CẢ ĐỀU DÙNG MÀU ĐEN TRẮNG ĐỂ GIẤU BẪY
 const matBlank = createTileMaterial('', '#444444', '#fff');
 const matsNormal = { 'X': createTileMaterial('X', '#333333', '#ffffff'), 'Y': createTileMaterial('Y', '#333333', '#ffffff'), 'Z': createTileMaterial('Z', '#333333', '#ffffff') };
-const matsSafe = { 'X': createTileMaterial('X', '#222222', '#00ff00'), 'Y': createTileMaterial('Y', '#222222', '#00ff00'), 'Z': createTileMaterial('Z', '#222222', '#00ff00') };
-const matsDanger = { 'X': createTileMaterial('X', '#660000', '#ff3333'), 'Y': createTileMaterial('Y', '#660000', '#ff3333'), 'Z': createTileMaterial('Z', '#660000', '#ff3333') };
 
 const tiles = [];
 const floorGroup = new THREE.Group();
@@ -222,6 +220,7 @@ document.getElementById('btnCreateRoomSubmit').onclick = async () => {
     } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
 };
 
+// --- QUẢN LÝ DANH SÁCH PHÒNG (DỌN DẸP GHOST ROOM) ---
 let unsubscribeRoomList = null;
 function listenToRoomList() {
     const roomListUI = document.getElementById('roomListUI');
@@ -234,6 +233,14 @@ function listenToRoomList() {
         snapshot.forEach(docSnap => {
             const data = docSnap.data(); const rId = docSnap.id;
             const pCount = data.players ? Object.keys(data.players).length : 0;
+            const maxPlayers = data.maxPlayers || 8; // Chống lỗi undefined
+            
+            // GARBAGE COLLECTION: NẾU PHÒNG TRỐNG (0 NGƯỜI) THÌ XÓA NGAY LẬP TỨC
+            if (pCount === 0) {
+                deleteDoc(doc(db, "rooms", rId)).catch(()=>{});
+                return; // Bỏ qua không hiển thị phòng này
+            }
+
             const isPlaying = data.status !== 'LOBBY';
             const statusText = isPlaying ? `<span style="color:#ff3333;">Đang chơi</span>` : `<span style="color:#00ff00;">Phòng chờ</span>`;
             const lockIcon = data.isPrivate ? '🔒 ' : '🔓 ';
@@ -243,11 +250,11 @@ function listenToRoomList() {
             row.innerHTML = `
                 <div class="room-info">
                     <div class="room-name">${lockIcon}${data.roomName} (ID: ${rId})</div>
-                    <div class="room-details"><span>Người chơi: ${pCount}/${data.maxPlayers}</span><span>Trạng thái: ${statusText}</span></div>
+                    <div class="room-details"><span>Người chơi: ${pCount}/${maxPlayers}</span><span>Trạng thái: ${statusText}</span></div>
                 </div>
-                <button class="btn btn-join" ${isPlaying || pCount >= data.maxPlayers ? 'disabled style="background:#555;"' : ''}>VÀO PHÒNG</button>
+                <button class="btn btn-join" ${isPlaying || pCount >= maxPlayers ? 'disabled style="background:#555;"' : ''}>VÀO PHÒNG</button>
             `;
-            if (!isPlaying && pCount < data.maxPlayers) row.querySelector('.btn-join').onclick = () => attemptJoinRoom(rId, data);
+            if (!isPlaying && pCount < maxPlayers) row.querySelector('.btn-join').onclick = () => attemptJoinRoom(rId, data);
             roomListUI.appendChild(row);
         });
     });
@@ -345,12 +352,11 @@ window.addEventListener('mousedown', (e) => {
     statusUI.style.color = "#888";
     setTimeout(() => { if (gameActive) { statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; statusUI.style.color = "#00ff00"; } }, pushCooldown);
 
-    // Dùng Geometry hình nón đã khởi tạo sẵn
     const coneMat = new THREE.MeshBasicMaterial({ color: myPlayer.color, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
     const cone = new THREE.Mesh(coneGeo, coneMat);
     
     cone.position.set(myPlayer.x, 0.5, myPlayer.z);
-    cone.rotation.y = myPlayer.facingAngle; // Khớp góc xoay với thân hình robot
+    cone.rotation.y = myPlayer.facingAngle;
 
     scene.add(cone);
     pushEffects.push({ mesh: cone, scale: 1, opacity: 0.6, type: 'cone' });
@@ -362,18 +368,15 @@ window.addEventListener('mousedown', (e) => {
         const dx = p.x - myPlayer.x;
         const dz = p.z - myPlayer.z;
         const dist = Math.sqrt(dx*dx + dz*dz);
-
+        
         if (dist > 0 && dist < 3.0) { 
             const angleToTarget = Math.atan2(dx, dz);
-            
-            // Xử lý góc lệch để xét xem mục tiêu có nằm trong hình nón không (góc nón 90 độ)
             let angleDiff = angleToTarget - myPlayer.facingAngle;
             while (angleDiff <= -Math.PI) angleDiff += Math.PI * 2;
             while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
             
             if (Math.abs(angleDiff) <= Math.PI / 4) { 
                 let pushPower = Math.max(0.5, 1.2 - dist * 0.3); 
-                
                 const nx = (dx / dist) * pushPower;
                 const nz = (dz / dist) * pushPower;
                 
@@ -437,6 +440,7 @@ function startHostLoop() {
         let aliveCount = Object.values(players).filter(p => p.isAlive).length;
         let totalPlayers = Object.keys(players).length;
 
+        // KIỂM TRA CHẾT HẾT -> END GAME
         if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
             clearInterval(hostGameLoop);
             await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
@@ -455,6 +459,7 @@ function startHostLoop() {
             
             let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
             
+            // Logic Cơ chế chữ: Vẫn duy trì đủ ô an toàn (tính bằng % của Sàn Còn Lại)
             let safeRatio = Math.max(0.1, 0.4 - (serverRound - 1) * 0.05);
             let safeCount = Math.floor(activeTiles.length * safeRatio);
             safeCount = Math.max(2, safeCount); 
@@ -485,7 +490,10 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            let holeCountToAdd = 10;
+            // CƠ CHẾ SỤT LÚN MỚI: Tăng số lượng hố (+10 mỗi round từ round 2)
+            let holeCountToAdd = (serverRound - 1) * 10; 
+            
+            // Chỉ chọn ngẫu nhiên Hố Mới từ những ô MÀU ĐỎ (ô đã bị rớt) ở vòng vừa rồi.
             let eligibleTilesToBreak = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
             
             let newHoles = [];
@@ -496,6 +504,7 @@ function startHostLoop() {
                 eligibleTilesToBreak.splice(rIdx, 1);
             }
 
+            // Gộp với hố của round trước
             let updatedHoles = [...serverHoles, ...newHoles];
             if (updatedHoles.length > 72) updatedHoles = updatedHoles.slice(0, 72);
 
@@ -541,6 +550,7 @@ async function forceLeaveRoom(reason = "") {
 
     if (currentRoomId) {
         sendSystemMessage(`Người chơi [${myName}] đã thoát.`);
+        // Kiểm tra xem phòng có còn người không, nếu không thì xóa luôn (Garbage Cleanup)
         const pCount = Object.keys(players).length;
         if (pCount <= 1) {
             await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
@@ -629,7 +639,7 @@ function animate() {
     pushEffects.forEach((eff, index) => {
         if(eff.type === 'cone') {
             eff.scale += 0.2;
-            eff.mesh.translateZ(0.5); // Nón bắn lướt đi mượt mà
+            eff.mesh.translateZ(0.5); 
         } else {
             eff.scale += 0.15;
         }
@@ -653,8 +663,6 @@ function animate() {
                 tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
             }
             tb.style.borderColor = '#00aaff';
-            
-            // FADE IN FADE OUT MƯỢT MÀ CHẬM LẠI
             tb.style.opacity = 0.2 + 0.8 * Math.abs(Math.sin(frameCount * 0.05)); 
         }
         else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
@@ -678,19 +686,20 @@ function animate() {
                 }
                 else if (serverPhase === 'LOCKED') {
                     tile.userData.targetY = -0.25;
+                    // BỎ HIỂU ỨNG MÀU ĐỎ/XANH -> DÙNG CHUNG MÀU CHỮ BÌNH THƯỜNG ĐỂ TĂNG ĐỘ KHÓ
                     if (serverSafeTiles.includes(index)) {
-                        tile.material = matsSafe[serverTargetLetter]; 
+                        tile.material = matsNormal[serverTargetLetter]; 
                     } else {
                         let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                        tile.material = matsDanger[dl]; 
+                        tile.material = matsNormal[dl]; 
                     }
                 }
                 else if (serverPhase === 'DROP') {
                     if (serverSafeTiles.includes(index)) {
-                        tile.material = matsSafe[serverTargetLetter]; 
+                        tile.material = matsNormal[serverTargetLetter]; 
                     } else {
                         let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
-                        tile.material = matsDanger[dl]; 
+                        tile.material = matsNormal[dl]; 
                         tile.userData.targetY = -2.5; 
                     }
                 }
@@ -698,7 +707,6 @@ function animate() {
             tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
         });
 
-        // FIX LỖI 1: KHÓA PHÍM VÀ CẬP NHẬT GÓC NHÌN NGƯỜI XEM (SPECTATOR) KHI CHẾT
         if (myPlayer.isAlive) {
             if (document.activeElement !== inGameChatInput) {
                 myPlayer.x += myPlayer.vx;
@@ -709,13 +717,12 @@ function animate() {
                 if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
                 if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
 
-                // TÍNH TOÁN HƯỚNG XOAY CHUẨN XÁC DỰA VÀO VECTOR DI CHUYỂN (-1, 0, 1)
                 let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
                 let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
                 
                 if (dx_dir !== 0 || dz_dir !== 0) {
                     let moveAngle = Math.atan2(dx_dir, dz_dir);
-                    myPlayer.facingAngle = moveAngle; // Cập nhật hướng đối mặt
+                    myPlayer.facingAngle = moveAngle;
                 }
 
                 if (keys.w) myPlayer.z -= moveSpeed;
@@ -737,7 +744,6 @@ function animate() {
             scene.add(playerMeshes[myId]);
         }
         
-        // FIX LỖI 2 & 3: Xoay hướng robot mượt mà + Chuyển góc nhìn Spectator khi chết
         playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, 0.2);
         playerMeshes[myId].position.x = myPlayer.x;
         playerMeshes[myId].position.z = myPlayer.z;
@@ -747,15 +753,15 @@ function animate() {
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.05);
-            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, 0.05); // Zoom bình thường
-            camera.lookAt(myPlayer.x, 0, myPlayer.z); // Focus vào bản thân
+            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, 0.05); 
+            camera.lookAt(myPlayer.x, 0, myPlayer.z); 
         } else {
             playerMeshes[myId].position.y = -2.5; 
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, 0.02);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, 0.02);
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.02); 
-            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, 0.02); // Spectator: Thu nhỏ lại
-            camera.lookAt(0, 0, 0); // Spectator: Focus trung tâm bản đồ
+            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, 0.02); 
+            camera.lookAt(0, 0, 0); 
         }
         camera.updateProjectionMatrix();
     }
@@ -776,14 +782,14 @@ function checkDeath() {
         const st = document.getElementById('statusText');
         st.innerText = "BẠN ĐÃ ƯỚT"; st.style.display = 'block'; 
         setTimeout(() => { st.style.display = 'none'; }, 1000);
-        uploadMyPosition(); // Gửi xác nhận cái chết duy nhất 1 lần để chống nghẽn server
+        uploadMyPosition(); 
     }
 }
 
 let lastUpdate = 0;
 async function uploadMyPosition() {
     let now = Date.now();
-    if (now - lastUpdate > 40) { // Limit FPS gửi network tránh spam
+    if (now - lastUpdate > 40) { 
         lastUpdate = now;
         await updateDoc(doc(db, "rooms", currentRoomId), {
             [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
