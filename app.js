@@ -54,6 +54,7 @@ const pushEffects = [];
 let myCooldownTime = 0;
 const pushCooldown = 2000; 
 
+// KHỞI TẠO NÓN SÓNG ĐẨY TOÀN CỤC
 const coneGeo = new THREE.ConeGeometry(2, 3, 16); 
 coneGeo.rotateX(Math.PI / 2); 
 coneGeo.translate(0, 0, 1.5); 
@@ -151,7 +152,7 @@ function createTileMaterial(letter, bgColorHex, textColorHex) {
     return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
 }
 
-// TẤT CẢ ĐỀU DÙNG MÀU ĐEN TRẮNG ĐỂ GIẤU BẪY
+// BẢO ĐẢM TẤT CẢ Ô GẠCH (AN TOÀN HAY BẪY) ĐỀU CÙNG 1 MÀU (CHỮ TRẮNG, NỀN XÁM ĐẬM)
 const matBlank = createTileMaterial('', '#444444', '#fff');
 const matsNormal = { 'X': createTileMaterial('X', '#333333', '#ffffff'), 'Y': createTileMaterial('Y', '#333333', '#ffffff'), 'Z': createTileMaterial('Z', '#333333', '#ffffff') };
 
@@ -220,7 +221,7 @@ document.getElementById('btnCreateRoomSubmit').onclick = async () => {
     } catch (error) { alert("Lỗi khi tạo phòng: " + error.message); }
 };
 
-// --- QUẢN LÝ DANH SÁCH PHÒNG (DỌN DẸP GHOST ROOM) ---
+// --- QUẢN LÝ DANH SÁCH PHÒNG (DỌN DẸP GHOST ROOM / PHÒNG BỊ LỖI) ---
 let unsubscribeRoomList = null;
 function listenToRoomList() {
     const roomListUI = document.getElementById('roomListUI');
@@ -233,14 +234,14 @@ function listenToRoomList() {
         snapshot.forEach(docSnap => {
             const data = docSnap.data(); const rId = docSnap.id;
             const pCount = data.players ? Object.keys(data.players).length : 0;
-            const maxPlayers = data.maxPlayers || 8; // Chống lỗi undefined
             
-            // GARBAGE COLLECTION: NẾU PHÒNG TRỐNG (0 NGƯỜI) THÌ XÓA NGAY LẬP TỨC
-            if (pCount === 0) {
+            // XÓA PHÒNG MA: 0 Người chơi HOẶC thiếu dữ liệu MaxPlayers (lỗi undefined)
+            if (pCount === 0 || !data.maxPlayers) {
                 deleteDoc(doc(db, "rooms", rId)).catch(()=>{});
-                return; // Bỏ qua không hiển thị phòng này
+                return;
             }
 
+            const maxPlayers = data.maxPlayers || 8;
             const isPlaying = data.status !== 'LOBBY';
             const statusText = isPlaying ? `<span style="color:#ff3333;">Đang chơi</span>` : `<span style="color:#00ff00;">Phòng chờ</span>`;
             const lockIcon = data.isPrivate ? '🔒 ' : '🔓 ';
@@ -294,18 +295,28 @@ function listenToCurrentRoom() {
     unsubscribeRoom = onSnapshot(doc(db, "rooms", currentRoomId), (docSnap) => {
         if (!docSnap.exists()) return forceLeaveRoom("Phòng đã bị xóa hoặc kết thúc!");
         const data = docSnap.data();
-        
-        if (data.hostId === myId) { 
-            isHost = true; 
-            document.getElementById('btnStartGame').style.display = 'block';
-            document.getElementById('btnReturnLobby').style.display = 'block';
-            document.getElementById('waitingHostText').style.display = 'none';
+        players = data.players || {};
+
+        // CƠ CHẾ AUTO HOST MIGRATION (CHỐNG KẸT GAME KHI HOST RỚT MẠNG)
+        if (data.hostId && !players[data.hostId]) {
+            const remainingIds = Object.keys(players);
+            if (remainingIds.length > 0 && remainingIds[0] === myId) {
+                if (!isHost) {
+                    isHost = true;
+                    updateDoc(doc(db, "rooms", currentRoomId), { hostId: myId, [`players.${myId}.isHost`]: true });
+                    if (data.status === 'PLAYING' && !hostGameLoop) startHostLoop(); // Khởi động lại luồng nếu đang chơi
+                }
+            }
+        } else if (data.hostId === myId) {
+            isHost = true;
         } else {
-            document.getElementById('btnReturnLobby').style.display = 'none';
-            document.getElementById('waitingHostText').style.display = 'block';
+            isHost = false;
         }
         
-        players = data.players || {};
+        document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
+        document.getElementById('btnReturnLobby').style.display = isHost ? 'block' : 'none';
+        document.getElementById('waitingHostText').style.display = isHost ? 'none' : 'block';
+        
         document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${Object.keys(players).length}/${data.maxPlayers})`;
         updateLobbyUI(); sync3DPlayers();
 
@@ -318,8 +329,9 @@ function listenToCurrentRoom() {
             const serverMe = data.players[myId];
             if (serverMe.push && serverMe.push.time !== myPlayer.lastPushTime) {
                 myPlayer.lastPushTime = serverMe.push.time;
-                myPlayer.vx = serverMe.push.nx;
-                myPlayer.vz = serverMe.push.nz;
+                // Nhận lực đẩy, tránh lỗi NaN
+                myPlayer.vx = serverMe.push.nx || 0;
+                myPlayer.vz = serverMe.push.nz || 0;
             }
         }
 
@@ -339,7 +351,7 @@ function listenToCurrentRoom() {
     });
 }
 
-// --- CƠ CHẾ SÓNG XUNG KÍCH (HÌNH NÓN) ---
+// --- CƠ CHẾ SÓNG XUNG KÍCH HÌNH NÓN ---
 window.addEventListener('mousedown', (e) => {
     if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
     const now = Date.now();
@@ -365,6 +377,9 @@ window.addEventListener('mousedown', (e) => {
         if (uid === myId || !players[uid].isAlive) continue;
         
         const p = players[uid];
+        // Đảm bảo dữ liệu vị trí là số hợp lệ
+        if (typeof p.x !== 'number' || typeof p.z !== 'number') continue;
+
         const dx = p.x - myPlayer.x;
         const dz = p.z - myPlayer.z;
         const dist = Math.sqrt(dx*dx + dz*dz);
@@ -437,10 +452,9 @@ function startHostLoop() {
     hostGameLoop = setInterval(async () => {
         if (!gameActive || !isHost) return clearInterval(hostGameLoop);
 
-        let aliveCount = Object.values(players).filter(p => p.isAlive).length;
+        let aliveCount = Object.values(players).filter(p => p && p.isAlive).length;
         let totalPlayers = Object.keys(players).length;
 
-        // KIỂM TRA CHẾT HẾT -> END GAME
         if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
             clearInterval(hostGameLoop);
             await updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' });
@@ -458,8 +472,6 @@ function startHostLoop() {
             let target = lettersList[Math.floor(Math.random()*lettersList.length)];
             
             let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
-            
-            // Logic Cơ chế chữ: Vẫn duy trì đủ ô an toàn (tính bằng % của Sàn Còn Lại)
             let safeRatio = Math.max(0.1, 0.4 - (serverRound - 1) * 0.05);
             let safeCount = Math.floor(activeTiles.length * safeRatio);
             safeCount = Math.max(2, safeCount); 
@@ -490,10 +502,7 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            // CƠ CHẾ SỤT LÚN MỚI: Tăng số lượng hố (+10 mỗi round từ round 2)
-            let holeCountToAdd = (serverRound - 1) * 10; 
-            
-            // Chỉ chọn ngẫu nhiên Hố Mới từ những ô MÀU ĐỎ (ô đã bị rớt) ở vòng vừa rồi.
+            let holeCountToAdd = 10;
             let eligibleTilesToBreak = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
             
             let newHoles = [];
@@ -504,7 +513,6 @@ function startHostLoop() {
                 eligibleTilesToBreak.splice(rIdx, 1);
             }
 
-            // Gộp với hố của round trước
             let updatedHoles = [...serverHoles, ...newHoles];
             if (updatedHoles.length > 72) updatedHoles = updatedHoles.slice(0, 72);
 
@@ -520,18 +528,22 @@ function startGameClient(roomName) {
     showScreen('');
     document.getElementById('gameUI').style.display = 'block';
     document.getElementById('gameRoomNameText').innerText = `Phòng: ${roomName}`;
-    
     document.getElementById('pushStatus').innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)";
     document.getElementById('pushStatus').style.color = "#00ff00";
 
-    gameActive = true; document.getElementById('statusText').style.display = 'none';
+    gameActive = true; 
+    document.getElementById('statusText').style.display = 'none';
 
+    // Đặt lại tọa độ và lý tính khi ván mới
     myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
     myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
     myPlayer.vx = 0; myPlayer.vz = 0; 
     myPlayer.isAlive = true;
     
-    camera.position.set(20, 30, 20); camera.lookAt(scene.position);
+    camera.position.set(20, 30, 20); 
+    camera.lookAt(scene.position);
+    camera.zoom = 1;
+    camera.updateProjectionMatrix();
 }
 
 function stopGameClient() {
@@ -545,24 +557,23 @@ async function forceLeaveRoom(reason = "") {
     gameActive = false; document.getElementById('gameUI').style.display = 'none';
     if (hostGameLoop) clearInterval(hostGameLoop);
     showScreen('mainMenu');
+    
     if (unsubscribeRoom) unsubscribeRoom();
     if (unsubscribeChat) unsubscribeChat();
 
     if (currentRoomId) {
         sendSystemMessage(`Người chơi [${myName}] đã thoát.`);
-        // Kiểm tra xem phòng có còn người không, nếu không thì xóa luôn (Garbage Cleanup)
         const pCount = Object.keys(players).length;
         if (pCount <= 1) {
             await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
         } else {
             await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
-            if (isHost) {
-                const remainingIds = Object.keys(players).filter(id => id !== myId);
-                if (remainingIds.length > 0) await updateDoc(doc(db, "rooms", currentRoomId), { hostId: remainingIds[0], [`players.${remainingIds[0]}.isHost`]: true });
-            }
+            // Không chuyển Host thủ công ở đây nữa, hàm listenToCurrentRoom của những người còn lại sẽ tự lo việc đó.
         }
     }
-    currentRoomId = null; isHost = false;
+    
+    // Đặt lại trạng thái local
+    currentRoomId = null; isHost = false; myPlayer.vx = 0; myPlayer.vz = 0; serverPhase = 'IDLE';
 }
 
 window.addEventListener('beforeunload', () => {
@@ -613,6 +624,8 @@ function sync3DPlayers() {
     for (let id in players) {
         if (id === myId) continue;
         const pData = players[id];
+        if (!pData || typeof pData.x !== 'number') continue; // Bảo vệ lỗi NaN
+
         const displayName = pData.name || id.substring(0,4);
         
         if (!playerMeshes[id]) {
@@ -686,7 +699,6 @@ function animate() {
                 }
                 else if (serverPhase === 'LOCKED') {
                     tile.userData.targetY = -0.25;
-                    // BỎ HIỂU ỨNG MÀU ĐỎ/XANH -> DÙNG CHUNG MÀU CHỮ BÌNH THƯỜNG ĐỂ TĂNG ĐỘ KHÓ
                     if (serverSafeTiles.includes(index)) {
                         tile.material = matsNormal[serverTargetLetter]; 
                     } else {
@@ -707,38 +719,36 @@ function animate() {
             tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
         });
 
-        if (myPlayer.isAlive) {
-            if (document.activeElement !== inGameChatInput) {
-                myPlayer.x += myPlayer.vx;
-                myPlayer.z += myPlayer.vz;
-                
-                myPlayer.vx *= 0.85;
-                myPlayer.vz *= 0.85;
-                if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
-                if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
+        if (myPlayer.isAlive && document.activeElement !== inGameChatInput) {
+            myPlayer.x += myPlayer.vx;
+            myPlayer.z += myPlayer.vz;
+            
+            myPlayer.vx *= 0.85;
+            myPlayer.vz *= 0.85;
+            if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
+            if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
 
-                let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-                let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                
-                if (dx_dir !== 0 || dz_dir !== 0) {
-                    let moveAngle = Math.atan2(dx_dir, dz_dir);
-                    myPlayer.facingAngle = moveAngle;
-                }
-
-                if (keys.w) myPlayer.z -= moveSpeed;
-                if (keys.s) myPlayer.z += moveSpeed;
-                if (keys.a) myPlayer.x -= moveSpeed;
-                if (keys.d) myPlayer.x += moveSpeed;
-
-                const bound = (gridSize * tileSize) / 2 - 0.5;
-                myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
-                myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
-
-                checkDeath(); 
+            let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+            let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+            
+            if (dx_dir !== 0 || dz_dir !== 0) {
+                let moveAngle = Math.atan2(dx_dir, dz_dir);
+                myPlayer.facingAngle = moveAngle;
             }
-            uploadMyPosition();
+
+            if (keys.w) myPlayer.z -= moveSpeed;
+            if (keys.s) myPlayer.z += moveSpeed;
+            if (keys.a) myPlayer.x -= moveSpeed;
+            if (keys.d) myPlayer.x += moveSpeed;
+
+            const bound = (gridSize * tileSize) / 2 - 0.5;
+            myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
+            myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
+
+            checkDeath(); 
         }
 
+        // Tạo lưới bản thân nếu chưa có
         if (!playerMeshes[myId]) {
             playerMeshes[myId] = createRobotModel(myPlayer.color, myName);
             scene.add(playerMeshes[myId]);
@@ -759,11 +769,13 @@ function animate() {
             playerMeshes[myId].position.y = -2.5; 
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, 0.02);
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, 0.02);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.02); 
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, 0.02); 
             camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, 0.02); 
             camera.lookAt(0, 0, 0); 
         }
         camera.updateProjectionMatrix();
+        
+        uploadMyPosition();
     }
     renderer.render(scene, camera);
 }
@@ -791,6 +803,9 @@ async function uploadMyPosition() {
     let now = Date.now();
     if (now - lastUpdate > 40) { 
         lastUpdate = now;
+        // Bắt lỗi NaN để tránh crash luồng cập nhật
+        if (isNaN(myPlayer.x) || isNaN(myPlayer.z)) return;
+        
         await updateDoc(doc(db, "rooms", currentRoomId), {
             [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
             [`players.${myId}.isAlive`]: myPlayer.isAlive, [`players.${myId}.score`]: myPlayer.score
