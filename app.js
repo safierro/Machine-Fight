@@ -43,7 +43,8 @@ let myPlayer = {
     lastPushTime: 0 
 };
 
-const moveSpeed = 0.05; 
+// Cập nhật tốc độ di chuyển chậm lại
+const moveSpeed = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
 const tileSize = 2;
@@ -167,7 +168,6 @@ for (let x = 0; x < gridSize; x++) {
 scene.add(floorGroup);
 const playerMeshes = {};
 
-// --- ĐĂNG NHẬP FIREBASE & UI ---
 signInAnonymously(auth).then((userCred) => {
     myId = userCred.user.uid;
     showScreen('mainMenu');
@@ -194,7 +194,6 @@ document.getElementById('crPrivacy').onchange = (e) => { document.getElementById
 document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
 document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
-// --- TẠO VÀ VÀO PHÒNG ---
 document.getElementById('btnCreateRoomSubmit').onclick = async () => {
     const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
     let maxP = parseInt(document.getElementById('crMaxPlayers').value);
@@ -264,7 +263,6 @@ async function attemptJoinRoom(rId, roomData) {
     } catch (error) { alert("Không thể vào phòng! Có thể phòng đã bị xóa hoặc đã đầy."); }
 }
 
-// --- ĐỒNG BỘ PHÒNG THỜI GIAN THỰC ---
 let unsubscribeRoom = null; let unsubscribeChat = null;
 
 function enterLobby(rId, rName, amIHost, maxP) {
@@ -327,7 +325,6 @@ function listenToCurrentRoom() {
     });
 }
 
-// --- CƠ CHẾ SÓNG XUNG KÍCH (CHUỘT TRÁI) ---
 window.addEventListener('mousedown', (e) => {
     if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
     const now = Date.now();
@@ -368,7 +365,6 @@ window.addEventListener('mousedown', (e) => {
     }
 });
 
-// HỆ THỐNG CHAT 
 function listenToChat() {
     const q = query(collection(db, "rooms", currentRoomId, "chat"), orderBy("time", "desc"), limit(20));
     unsubscribeChat = onSnapshot(q, (snap) => {
@@ -436,6 +432,7 @@ function startHostLoop() {
             serverPhase = 'LOCKED'; phaseTime = 0;
             let target = lettersList[Math.floor(Math.random()*lettersList.length)];
             
+            // Logic Cơ chế 2: Cân bằng số lượng chữ an toàn trên phần Gạch còn lại
             let activeTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverHoles.includes(i));
             let safeCount = Math.floor(activeTiles.length * 0.4);
             safeCount = Math.max(2, safeCount); 
@@ -466,26 +463,32 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            let holeCount = (serverRound - 1) * 4; 
-            if (holeCount > 75) holeCount = 75; 
+            // CƠ CHẾ SỤT LÚN MỚI (Machine Party mechanic)
+            // Lọc ra các ô ĐÃ SẬP ở round này (không phải SafeTiles, cũng không phải lỗ có sẵn)
+            let droppedTiles = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
             
-            let allIndices = Array.from({length: 81}, (_, i) => i);
             let newHoles = [];
-            for(let i=0; i < holeCount; i++) {
-                let rIdx = Math.floor(Math.random() * allIndices.length);
-                newHoles.push(allIndices[rIdx]);
-                allIndices.splice(rIdx, 1);
+            let holesToAdd = 4; // Cộng dồn 4 ô mỗi round
+            
+            for(let i=0; i < holesToAdd; i++) {
+                if (droppedTiles.length === 0) break;
+                let rIdx = Math.floor(Math.random() * droppedTiles.length);
+                newHoles.push(droppedTiles[rIdx]);
+                droppedTiles.splice(rIdx, 1); // Tránh bị trùng
             }
+
+            // Gộp với hố của round trước
+            let updatedHoles = [...serverHoles, ...newHoles];
+            if (updatedHoles.length > 75) updatedHoles = updatedHoles.slice(0, 75); // Giới hạn an toàn
 
             serverPhase = 'IDLE'; phaseTime = 0;
             await updateDoc(doc(db, "rooms", currentRoomId), { 
-                "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": newHoles
+                "gameState.phase": serverPhase, "gameState.round": serverRound, "gameState.holes": updatedHoles
             });
         }
     }, 1000);
 }
 
-// --- CLIENT UI VÀ SCOREBOARD ---
 function startGameClient(roomName) {
     showScreen('');
     document.getElementById('gameUI').style.display = 'block';
@@ -622,17 +625,20 @@ function animate() {
             tb.style.opacity = 1; 
         }
         else if (serverPhase === 'ROLLING') {
-            if (frameCount % 40 === 0) {
+            // Thay đổi chữ ngẫu nhiên TỐC ĐỘ CHẬM HƠN
+            if (frameCount % 60 === 0) {
                 tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
             }
             tb.style.borderColor = '#00aaff';
             
-            tb.style.opacity = (frameCount % 20 < 10) ? 0 : 1; 
+            // HIỆU ỨNG FADE IN & FADE OUT MƯỢT MÀ DÙNG TOÁN HỌC (Math.sin)
+            // Giá trị opacity sẽ lướt nhẹ nhàng từ 0.2 đến 1.0 thay vì chớp tắt đột ngột
+            tb.style.opacity = 0.2 + 0.8 * Math.abs(Math.sin(frameCount * 0.05)); 
         }
         else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
             tb.innerText = serverTargetLetter;
             tb.style.borderColor = '#00ff00';
-            tb.style.opacity = 1; 
+            tb.style.opacity = 1; // Khóa lại thì hiện rực rỡ
         }
 
         tiles.forEach((tile, index) => {
