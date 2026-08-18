@@ -54,7 +54,6 @@ const pushEffects = [];
 let myCooldownTime = 0;
 const pushCooldown = 2000; 
 
-// KHỞI TẠO NÓN SÓNG ĐẨY TOÀN CỤC
 const coneGeo = new THREE.ConeGeometry(2, 3, 16); 
 coneGeo.rotateX(Math.PI / 2); 
 coneGeo.translate(0, 0, 1.5); 
@@ -152,7 +151,7 @@ function createTileMaterial(letter, bgColorHex, textColorHex) {
     return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
 }
 
-// BẢO ĐẢM TẤT CẢ Ô GẠCH (AN TOÀN HAY BẪY) ĐỀU CÙNG 1 MÀU (CHỮ TRẮNG, NỀN XÁM ĐẬM) TĂNG ĐỘ KHÓ
+// BẢO ĐẢM TẤT CẢ ĐỀU CÙNG 1 MÀU (CHỮ TRẮNG, NỀN XÁM ĐẬM)
 const matBlank = createTileMaterial('', '#444444', '#fff');
 const matsNormal = { 'X': createTileMaterial('X', '#333333', '#ffffff'), 'Y': createTileMaterial('Y', '#333333', '#ffffff'), 'Z': createTileMaterial('Z', '#333333', '#ffffff') };
 
@@ -199,10 +198,9 @@ document.getElementById('crPrivacy').onchange = (e) => { document.getElementById
 document.getElementById('btnBackFromCreate').onclick = () => showScreen('mainMenu');
 document.getElementById('btnBackFromJoin').onclick = () => { if(unsubscribeRoomList) unsubscribeRoomList(); showScreen('mainMenu'); };
 
-// CHỐNG SPAM CLICK LÚC TẠO PHÒNG
 document.getElementById('btnCreateRoomSubmit').onclick = async function() {
     const btn = this;
-    if (btn.disabled) return; // Nếu đang xử lý thì chặn click tiếp
+    if (btn.disabled) return; 
     
     const name = document.getElementById('crRoomName').value.trim() || "Phòng Ẩn Danh";
     let maxP = parseInt(document.getElementById('crMaxPlayers').value);
@@ -212,7 +210,6 @@ document.getElementById('btnCreateRoomSubmit').onclick = async function() {
 
     if (isPrivate && pass === "") return alert("Vui lòng nhập mật khẩu cho phòng riêng tư!");
     
-    // UI Phản hồi
     btn.disabled = true;
     btn.innerText = "ĐANG TẠO...";
 
@@ -235,7 +232,6 @@ document.getElementById('btnCreateRoomSubmit').onclick = async function() {
     }
 };
 
-// --- QUẢN LÝ DANH SÁCH PHÒNG (DỌN DẸP GHOST ROOM / PHÒNG BỊ LỖI) ---
 let unsubscribeRoomList = null;
 function listenToRoomList() {
     const roomListUI = document.getElementById('roomListUI');
@@ -249,7 +245,6 @@ function listenToRoomList() {
             const data = docSnap.data(); const rId = docSnap.id;
             const pCount = data.players ? Object.keys(data.players).length : 0;
             
-            // XÓA PHÒNG MA: 0 Người chơi HOẶC thiếu dữ liệu MaxPlayers (lỗi undefined)
             if (pCount === 0 || !data.maxPlayers) {
                 deleteDoc(doc(db, "rooms", rId)).catch(()=>{});
                 return;
@@ -278,7 +273,6 @@ function listenToRoomList() {
     });
 }
 
-// CHỐNG SPAM KHI VÀO PHÒNG
 async function attemptJoinRoom(rId, roomData, btnElement) {
     if (roomData.isPrivate) {
         const inputPass = prompt("Phòng này là phòng riêng tư. Nhập mật khẩu:");
@@ -321,18 +315,27 @@ function listenToCurrentRoom() {
     unsubscribeRoom = onSnapshot(doc(db, "rooms", currentRoomId), (docSnap) => {
         if (!docSnap.exists()) return forceLeaveRoom("Phòng đã bị xóa hoặc kết thúc!");
         const data = docSnap.data();
-        
-        if (data.hostId === myId) { 
-            isHost = true; 
-            document.getElementById('btnStartGame').style.display = 'block';
-            document.getElementById('btnReturnLobby').style.display = 'block';
-            document.getElementById('waitingHostText').style.display = 'none';
+        players = data.players || {};
+
+        if (data.hostId && !players[data.hostId]) {
+            const remainingIds = Object.keys(players);
+            if (remainingIds.length > 0 && remainingIds[0] === myId) {
+                if (!isHost) {
+                    isHost = true;
+                    updateDoc(doc(db, "rooms", currentRoomId), { hostId: myId, [`players.${myId}.isHost`]: true });
+                    if (data.status === 'PLAYING' && !hostGameLoop) startHostLoop(); 
+                }
+            }
+        } else if (data.hostId === myId) {
+            isHost = true;
         } else {
-            document.getElementById('btnReturnLobby').style.display = 'none';
-            document.getElementById('waitingHostText').style.display = 'block';
+            isHost = false;
         }
         
-        players = data.players || {};
+        document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
+        document.getElementById('btnReturnLobby').style.display = isHost ? 'block' : 'none';
+        document.getElementById('waitingHostText').style.display = isHost ? 'none' : 'block';
+        
         document.getElementById('lobbyPlayerCountTitle').innerText = `NGƯỜI CHƠI (${Object.keys(players).length}/${data.maxPlayers})`;
         updateLobbyUI(); sync3DPlayers();
 
@@ -345,7 +348,6 @@ function listenToCurrentRoom() {
             const serverMe = data.players[myId];
             if (serverMe.push && serverMe.push.time !== myPlayer.lastPushTime) {
                 myPlayer.lastPushTime = serverMe.push.time;
-                // Nhận lực đẩy, tránh lỗi NaN
                 myPlayer.vx = serverMe.push.nx || 0;
                 myPlayer.vz = serverMe.push.nz || 0;
             }
@@ -393,7 +395,6 @@ window.addEventListener('mousedown', (e) => {
         if (uid === myId || !players[uid].isAlive) continue;
         
         const p = players[uid];
-        // Đảm bảo dữ liệu vị trí là số hợp lệ
         if (typeof p.x !== 'number' || typeof p.z !== 'number') continue;
 
         const dx = p.x - myPlayer.x;
@@ -518,7 +519,7 @@ function startHostLoop() {
         else if (serverPhase === 'DROP' && phaseTime >= 3) {
             serverRound++;
             
-            let holeCountToAdd = (serverRound - 1) * 10; 
+            let holeCountToAdd = 10;
             let eligibleTilesToBreak = Array.from({length: 81}, (_, i) => i).filter(i => !serverSafeTiles.includes(i) && !serverHoles.includes(i));
             
             let newHoles = [];
@@ -583,11 +584,6 @@ async function forceLeaveRoom(reason = "") {
             await deleteDoc(doc(db, "rooms", currentRoomId)).catch(e=>console.log(e));
         } else {
             await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}`]: deleteDoc() }).catch(e=>console.log(e));
-            // CƠ CHẾ AUTO HOST MIGRATION NẾU CHỦ PHÒNG CŨ THOÁT
-            if (isHost) {
-                const remainingIds = Object.keys(players).filter(id => id !== myId);
-                if (remainingIds.length > 0) await updateDoc(doc(db, "rooms", currentRoomId), { hostId: remainingIds[0], [`players.${remainingIds[0]}.isHost`]: true }).catch(()=>{});
-            }
         }
     }
     
@@ -717,7 +713,6 @@ function animate() {
                 }
                 else if (serverPhase === 'LOCKED') {
                     tile.userData.targetY = -0.25;
-                    // BẢO ĐẢM TẤT CẢ ĐỀU CHUNG MÀU CHỮ TRẮNG NỀN XÁM
                     if (serverSafeTiles.includes(index)) {
                         tile.material = matsNormal[serverTargetLetter]; 
                     } else {
@@ -767,7 +762,6 @@ function animate() {
 
                 checkDeath(); 
             }
-            uploadMyPosition();
         }
 
         if (!playerMeshes[myId]) {
@@ -795,10 +789,14 @@ function animate() {
             camera.lookAt(0, 0, 0); 
         }
         camera.updateProjectionMatrix();
+        
+        // CẬP NHẬT TỌA ĐỘ BẤT KỂ SỐNG CHẾT (ĐỂ SERVER BIẾT XÁC MÌNH Ở ĐÂU VÀ UPDATE KILLS)
+        uploadMyPosition();
     }
     renderer.render(scene, camera);
 }
 
+// HÀM FIX LỖI ÉP GỬI CHẾT NGAY LẬP TỨC
 function checkDeath() {
     if (!myPlayer.isAlive) return; 
     
@@ -813,12 +811,20 @@ function checkDeath() {
         const st = document.getElementById('statusText');
         st.innerText = "BẠN ĐÃ ƯỚT"; st.style.display = 'block'; 
         setTimeout(() => { st.style.display = 'none'; }, 1000);
-        uploadMyPosition(); 
+        
+        // FIX: Báo chết lập tức cho Server
+        if(currentRoomId) {
+             updateDoc(doc(db, "rooms", currentRoomId), {
+                [`players.${myId}.isAlive`]: false
+            }).catch(()=>{});
+        }
     }
 }
 
 let lastUpdate = 0;
 async function uploadMyPosition() {
+    if (!myPlayer.isAlive) return; // Nếu đã chết không cần gửi tọa độ cản trở mạng
+
     let now = Date.now();
     if (now - lastUpdate > 40) { 
         lastUpdate = now;
