@@ -4,16 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Machine Party - Alphabet Survival</title>
-    
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG -->
     <div id="rotateWarning">
         <div class="rotate-icon">📱</div>
-        <p>VUI LÒNG TẮT KHÓA XOAY VÀ<br>QUAY NGANG ĐIỆN THOẠI CỦA BẠN</p>
+        <p>TRẢI NGHIỆM TỐT NHẤT Ở CHẾ ĐỘ NẰM NGANG</p>
         <button id="btnAutoRotate" class="btn">BẬT TOÀN MÀN HÌNH</button>
     </div>
 
@@ -26,12 +24,14 @@
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
-        <div class="form-group input-center-wrapper">
+        
+        <!-- BỘ KHUNG CĂN CHỈNH TÊN VÀ NÚT -->
+        <div class="menu-box">
             <input type="text" id="myPlayerName" placeholder="TÊN (VD: safierro)..." maxlength="12">
-        </div>
-        <div class="button-group">
-            <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
-            <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
+            <div class="menu-buttons">
+                <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
+                <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
+            </div>
         </div>
     </div>
 
@@ -110,15 +110,14 @@
             </div>
             <div class="right-buttons">
                 <!-- NÚT BẬT TẮT CHAT -->
-                <button class="btn btn-secondary" id="btnToggleChat" style="padding: 5px 10px; width: auto; margin: 0; font-size: 14px;">💬 CHAT</button>
-                <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
+                <button class="top-btn btn-chat" id="btnToggleChat">💬 CHAT</button>
+                <button class="top-btn btn-leave" id="btnLeave">THOÁT PHÒNG</button>
             </div>
         </div>
         
         <div id="targetBoard"></div>
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
         
-        <!-- KHUNG CHAT IN-GAME (Thu nhỏ & Di chuyển sang Phải) -->
         <div id="inGameChatContainer" class="hidden">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">

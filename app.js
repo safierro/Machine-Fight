@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+// CẤU HÌNH FIREBASE 
 const myFirebaseConfig = {
     apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
     authDomain: "machine-fight.firebaseapp.com",
@@ -16,6 +17,7 @@ const app = initializeApp(myFirebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// --- BIẾN TOÀN CỤC ---
 let myId = null;
 let myName = "Player";
 let currentRoomId = null;
@@ -42,7 +44,8 @@ let myPlayer = {
     facingAngle: 0 
 };
 
-const moveSpeed = 0.025; 
+// Tốc độ di chuyển nền tảng (Base Speed tại 60 FPS)
+const BASE_SPEED = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
 const tileSize = 2; 
@@ -79,7 +82,6 @@ if (btnToggleChat && inGameChatContainer) {
     });
 }
 
-// ================= IOS ROTATE BYPASS & FULLSCREEN =================
 const btnAutoRotate = document.getElementById('btnAutoRotate');
 if (btnAutoRotate) {
     btnAutoRotate.addEventListener('click', async () => {
@@ -87,13 +89,8 @@ if (btnAutoRotate) {
             let elem = document.documentElement;
             if (elem.requestFullscreen) await elem.requestFullscreen();
             else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
-            
-            if (screen.orientation && screen.orientation.lock) {
-                await screen.orientation.lock("landscape").catch(()=>{});
-            }
-        } catch (error) {
-            // Nuốt lỗi cảnh báo tự động trên iOS, bắt người dùng phải quay ngang vật lý
-        }
+            if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape").catch(()=>{});
+        } catch (error) {}
     });
 }
 
@@ -355,6 +352,16 @@ function listenToCurrentRoom() {
             isHost = false;
         }
         
+        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY TRONG LUỒNG MẠNG THỜI GIAN THỰC
+        if (isHost && data.status === 'PLAYING') {
+            let aliveCount = Object.values(players).filter(p => p && p.isAlive).length;
+            let totalPlayers = Object.keys(players).length;
+            // Nếu có nhiều người chơi mà chỉ còn 1 sống, hoặc chơi 1 mình mà chết -> KẾT THÚC NGAY
+            if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
+                updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' }).catch(()=>{});
+            }
+        }
+
         document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
         document.getElementById('btnReturnLobby').style.display = isHost ? 'block' : 'none';
         document.getElementById('waitingHostText').style.display = isHost ? 'none' : 'block';
@@ -659,7 +666,6 @@ function startGameClient(roomName) {
     gameActive = true; 
     document.getElementById('statusText').style.display = 'none';
 
-    // Đặt khung chat về ẩn khi vào game trên mobile, bấm nút Chat để hiện
     const chatContainer = document.getElementById('inGameChatContainer');
     if (chatContainer) chatContainer.classList.add('hidden');
 
@@ -700,6 +706,10 @@ async function forceLeaveRoom(reason = "") {
     }
     
     currentRoomId = null; isHost = false; myPlayer.vx = 0; myPlayer.vz = 0; serverPhase = 'IDLE';
+    
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(()=>{});
+    }
 }
 
 window.addEventListener('beforeunload', () => {
@@ -769,21 +779,30 @@ function sync3DPlayers() {
     }
 }
 
-// --- CẬP NHẬT RENDER LOOP ---
-let frameCount = 0;
+// --- CẬP NHẬT RENDER LOOP VÀ DELTA TIME ĐỂ CÂN BẰNG MOBILE/PC ---
+let lastFrameTime = performance.now();
+
 function animate() {
     requestAnimationFrame(animate);
+    
+    // TÍNH TOÁN DELTA TIME 
+    let now = performance.now();
+    let dt = (now - lastFrameTime) / 1000; 
+    lastFrameTime = now;
+    if (dt > 0.1) dt = 0.1; 
+    
+    let timeScale = dt * 60; // Tỉ lệ với khung hình chuẩn 60fps
     frameCount++;
 
     pushEffects.forEach((eff, index) => {
         if(eff.type === 'cone') {
-            eff.scale += 0.2;
-            eff.mesh.translateZ(0.5); 
+            eff.scale += 0.2 * timeScale;
+            eff.mesh.translateZ(0.5 * timeScale); 
         } else {
-            eff.scale += 0.15;
+            eff.scale += 0.15 * timeScale;
         }
         
-        eff.opacity -= 0.03;
+        eff.opacity -= 0.03 * timeScale;
         eff.mesh.scale.set(eff.scale, eff.scale, eff.scale);
         eff.mesh.material.opacity = eff.opacity;
         if (eff.opacity <= 0) { scene.remove(eff.mesh); pushEffects.splice(index, 1); }
@@ -842,16 +861,22 @@ function animate() {
                     }
                 }
             }
-            tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, 0.1);
+            // Lerp mượt chuẩn thời gian thực
+            let tileLerp = 1 - Math.pow(1 - 0.1, timeScale);
+            tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, tileLerp);
         });
 
         if (myPlayer.isAlive) {
             if (document.activeElement !== inGameChatInput) {
-                myPlayer.x += myPlayer.vx;
-                myPlayer.z += myPlayer.vz;
+                // SỬ DỤNG TIMESCALE ĐỂ CÂN BẰNG TỐC ĐỘ DI CHUYỂN & MA SÁT CHO MỌI THIẾT BỊ
+                let currentMoveSpeed = BASE_SPEED * timeScale;
+
+                myPlayer.x += myPlayer.vx * timeScale;
+                myPlayer.z += myPlayer.vz * timeScale;
                 
-                myPlayer.vx *= 0.85;
-                myPlayer.vz *= 0.85;
+                let friction = Math.pow(0.85, timeScale);
+                myPlayer.vx *= friction;
+                myPlayer.vz *= friction;
                 if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
                 if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
 
@@ -863,10 +888,10 @@ function animate() {
                     myPlayer.facingAngle = moveAngle;
                 }
 
-                if (keys.w) myPlayer.z -= moveSpeed;
-                if (keys.s) myPlayer.z += moveSpeed;
-                if (keys.a) myPlayer.x -= moveSpeed;
-                if (keys.d) myPlayer.x += moveSpeed;
+                if (keys.w) myPlayer.z -= currentMoveSpeed;
+                if (keys.s) myPlayer.z += currentMoveSpeed;
+                if (keys.a) myPlayer.x -= currentMoveSpeed;
+                if (keys.d) myPlayer.x += currentMoveSpeed;
 
                 const bound = (gridSize * tileSize) / 2 - 0.5;
                 myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
@@ -881,23 +906,27 @@ function animate() {
             scene.add(playerMeshes[myId]);
         }
         
-        playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, 0.2);
+        let rotLerp = 1 - Math.pow(1 - 0.2, timeScale);
+        let posLerp = 1 - Math.pow(1 - 0.05, timeScale);
+        let camLerp = 1 - Math.pow(1 - 0.02, timeScale);
+
+        playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, rotLerp);
         playerMeshes[myId].position.x = myPlayer.x;
         playerMeshes[myId].position.z = myPlayer.z;
         
         if (myPlayer.isAlive) {
             playerMeshes[myId].position.y = 0; 
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, 0.05);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, 0.05);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, 0.05);
-            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, 0.05); 
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, posLerp);
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, posLerp);
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, posLerp);
+            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, posLerp); 
             camera.lookAt(myPlayer.x, 0, myPlayer.z); 
         } else {
             playerMeshes[myId].position.y = -2.5; 
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, 0.02);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, 0.02);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, 0.02); 
-            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, 0.02); 
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, camLerp);
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, camLerp);
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, camLerp); 
+            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, camLerp); 
             camera.lookAt(0, 0, 0); 
         }
         camera.updateProjectionMatrix();
