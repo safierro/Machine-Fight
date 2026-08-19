@@ -44,7 +44,7 @@ let myPlayer = {
     facingAngle: 0 
 };
 
-// Tốc độ chuẩn 60FPS
+// Tốc độ di chuyển chuẩn (Delta Time)
 const BASE_SPEED = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
@@ -245,7 +245,7 @@ document.getElementById('btnCreateRoomSubmit').onclick = async function() {
         });
         enterLobby(newRoomId, name, true, maxP);
     } catch (error) { 
-        alert("Lỗi khi tạo phòng: Do bạn chưa cấp quyền Firebase Database (Security Rules) hoặc lỗi mạng.\n\nChi tiết: " + error.message); 
+        alert("Lỗi mạng.\nChi tiết: " + error.message); 
     } finally {
         btn.disabled = false;
         btn.innerText = "TẠO VÀ VÀO PHÒNG";
@@ -265,10 +265,7 @@ function listenToRoomList() {
             const data = docSnap.data(); const rId = docSnap.id;
             const pCount = data.players ? Object.keys(data.players).length : 0;
             
-            if (pCount === 0 || !data.maxPlayers) {
-                deleteDoc(doc(db, "rooms", rId)).catch(()=>{});
-                return;
-            }
+            if (pCount === 0 || !data.maxPlayers) return; // Chỉ bỏ qua không xóa rác để chống kẹt
 
             const maxPlayers = data.maxPlayers || 8;
             const isPlaying = data.status !== 'LOBBY';
@@ -317,6 +314,7 @@ async function attemptJoinRoom(rId, roomData, btnElement) {
     }
 }
 
+// --- ĐỒNG BỘ PHÒNG THỜI GIAN THỰC ---
 let unsubscribeRoom = null; let unsubscribeChat = null;
 
 function enterLobby(rId, rName, amIHost, maxP) {
@@ -351,11 +349,11 @@ function listenToCurrentRoom() {
             isHost = false;
         }
         
-        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY LẬP TỨC CHO HOST
+        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY LẬP TỨC (REAL-TIME) CHO HOST
         if (isHost && data.status === 'PLAYING') {
             let aliveCount = Object.values(players).filter(p => p && p.isAlive).length;
             let totalPlayers = Object.keys(players).length;
-            // ÉP END GAME NGAY TỨC THÌ NẾU CÒN 1 NGƯỜI
+            // End Game nhanh như chớp nếu thoả điều kiện
             if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
                 updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' }).catch(()=>{});
             }
@@ -398,6 +396,7 @@ function listenToCurrentRoom() {
     });
 }
 
+// --- CƠ CHẾ SÓNG XUNG KÍCH ---
 function triggerPush() {
     if (!gameActive || !myPlayer.isAlive) return;
     const now = Date.now();
@@ -754,7 +753,20 @@ function updateLobbyUI() {
 }
 
 function sync3DPlayers() {
-    for (let id in playerMeshes) if (!players[id]) { scene.remove(playerMeshes[id]); delete playerMeshes[id]; }
+    for (let id in playerMeshes) {
+        if (!players[id]) { 
+            // FIX MEMORY LEAK TẠI ĐÂY (Xóa rác GPU khi người chơi thoát)
+            let mesh = playerMeshes[id];
+            scene.remove(mesh);
+            mesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.geometry.dispose();
+                    if (child.material.isMaterial) child.material.dispose();
+                }
+            });
+            delete playerMeshes[id]; 
+        }
+    }
     for (let id in players) {
         if (id === myId) continue;
         const pData = players[id];
@@ -777,7 +789,7 @@ function sync3DPlayers() {
     }
 }
 
-// BẢO VỆ CHỐNG LỖI MÀN HÌNH ĐEN (NAN PROTECTION) + DELTA TIME CHUẨN
+// BẢO VỆ CHỐNG LỖI MÀN HÌNH ĐEN & DELTA TIME
 let lastFrameTime = performance.now();
 
 function animate() {
@@ -785,9 +797,8 @@ function animate() {
     
     let now = performance.now();
     let dt = (now - lastFrameTime) / 1000;
-    // Chống lỗi âm hoặc NaN khi giật lag
     if (isNaN(dt) || dt < 0) dt = 0.016; 
-    if (dt > 0.1) dt = 0.1; // Capped ở 10fps để không dịch chuyển đột ngột
+    if (dt > 0.1) dt = 0.1; // Capped ở 10fps để không dịch chuyển giật cục
     lastFrameTime = now;
     
     let timeScale = dt * 60; // Base 60fps
@@ -804,7 +815,12 @@ function animate() {
         eff.opacity -= 0.03 * timeScale;
         eff.mesh.scale.set(eff.scale, eff.scale, eff.scale);
         eff.mesh.material.opacity = eff.opacity;
-        if (eff.opacity <= 0) { scene.remove(eff.mesh); pushEffects.splice(index, 1); }
+        if (eff.opacity <= 0) { 
+            // FIX LỖI TRÀN BỘ NHỚ LÀM ĐEN MÀN HÌNH (Dispose memory)
+            scene.remove(eff.mesh); 
+            eff.mesh.material.dispose();
+            pushEffects.splice(index, 1); 
+        }
     });
 
     if (gameActive) {
@@ -828,7 +844,7 @@ function animate() {
             tb.style.opacity = 1; 
         }
 
-        let tileLerp = Math.min(0.1 * timeScale, 1); // An toàn tuyệt đối không dùng pow
+        let tileLerp = Math.min(0.1 * timeScale, 1); 
         
         tiles.forEach((tile, index) => {
             if (serverHoles.includes(index)) {
@@ -845,7 +861,7 @@ function animate() {
                 }
                 else if (serverPhase === 'LOCKED') {
                     tile.userData.targetY = -0.25;
-                    let targetL = serverTargetLetter || 'X'; // Bảo vệ nếu host gửi rỗng
+                    let targetL = serverTargetLetter || 'X'; 
                     if (serverSafeTiles.includes(index)) {
                         tile.material = matsNormal[targetL]; 
                     } else {
@@ -869,12 +885,13 @@ function animate() {
 
         if (myPlayer.isAlive) {
             if (document.activeElement !== inGameChatInput) {
+                // TỐC ĐỘ DI CHUYỂN ĐỒNG BỘ MỌI THIẾT BỊ BẰNG TIMESCALE
                 let currentMoveSpeed = BASE_SPEED * timeScale;
 
                 myPlayer.x += myPlayer.vx * timeScale;
                 myPlayer.z += myPlayer.vz * timeScale;
                 
-                let friction = Math.max(0, 1 - (0.15 * timeScale)); // Giảm tốc tuyến tính an toàn
+                let friction = Math.max(0, 1 - (0.15 * timeScale)); 
                 myPlayer.vx *= friction;
                 myPlayer.vz *= friction;
                 if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
@@ -911,16 +928,22 @@ function animate() {
         let camLerp = Math.min(0.02 * timeScale, 1);
 
         playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, rotLerp);
-        playerMeshes[myId].position.x = myPlayer.x;
-        playerMeshes[myId].position.z = myPlayer.z;
+        
+        // CHỐNG NAN POSITION BẢO VỆ CONTEXT
+        if(!isNaN(myPlayer.x) && !isNaN(myPlayer.z)) {
+            playerMeshes[myId].position.x = myPlayer.x;
+            playerMeshes[myId].position.z = myPlayer.z;
+        }
         
         if (myPlayer.isAlive) {
             playerMeshes[myId].position.y = 0; 
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, posLerp);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, posLerp);
+            if(!isNaN(myPlayer.x) && !isNaN(myPlayer.z)){
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, posLerp);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, posLerp);
+                camera.lookAt(myPlayer.x, 0, myPlayer.z); 
+            }
             camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, posLerp);
             camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, posLerp); 
-            camera.lookAt(myPlayer.x, 0, myPlayer.z); 
         } else {
             playerMeshes[myId].position.y = -2.5; 
             camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, camLerp);
@@ -936,6 +959,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// BÁO CHẾT (ĐẨY LÊN SERVER NGAY LẬP TỨC ĐỂ KHÔNG BỊ TREO ROUND)
 function checkDeath() {
     if (!myPlayer.isAlive) return; 
     
@@ -961,12 +985,12 @@ function checkDeath() {
 
 let lastUpdate = 0;
 async function uploadMyPosition() {
-    if (!myPlayer.isAlive) return; 
+    if (!myPlayer.isAlive || !currentRoomId) return; 
 
     let now = Date.now();
     if (now - lastUpdate > 40) { 
         lastUpdate = now;
-        if (isNaN(myPlayer.x) || isNaN(myPlayer.z)) return;
+        if (isNaN(myPlayer.x) || isNaN(myPlayer.z)) return; // Failsafe
         
         await updateDoc(doc(db, "rooms", currentRoomId), {
             [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
