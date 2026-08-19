@@ -12,8 +12,11 @@ canvas { display: block; touch-action: none;}
 h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px #ff0000; margin-bottom: 5px; text-transform: uppercase; text-align: center;}
 .subtitle { font-size: 16px; color: #888; margin-bottom: 20px; text-align: center;}
 
-/* ================= ĐỊNH DẠNG MENU CHÍNH ================= */
-.menu-box { display: flex; flex-direction: column; gap: 10px; width: 300px; margin-top: 10px;}
+/* ================= ĐỊNH DẠNG TỶ LỆ VÀNG CHO MENU CHÍNH ================= */
+.menu-box { 
+    display: flex; flex-direction: column; align-items: center; gap: 10px; 
+    width: 100%; max-width: 300px; margin-top: 10px;
+}
 #myPlayerName { 
     width: 100%; text-align: center; font-size: 22px; font-weight: bold; 
     border-color: #0088ff; background: rgba(0, 136, 255, 0.1); 
@@ -21,7 +24,7 @@ h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px
     color: #fff; outline: none; border: 2px solid #0088ff; font-family: inherit;
 }
 .menu-buttons { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-.menu-buttons .btn { width: 100%; margin: 0; }
+.menu-buttons .btn { width: 100%; margin: 0; box-sizing: border-box;}
 
 .btn {
     background: #0088ff; color: white; border: none; padding: 12px 25px; font-size: 18px; font-weight: bold; font-family: inherit;
@@ -87,12 +90,13 @@ input:focus, select:focus { border-color: #00aaff; }
 #roomCodeDisplay { font-size: 16px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333; display: flex; flex-direction: column;}
 #pushStatus { font-size: 12px; color: #00ff00; margin-top: 2px; font-weight: bold; } 
 
-/* Thiết kế Nút Chat bằng nút Thoát Phòng */
-.right-buttons { display: flex; gap: 10px; align-items: flex-start; }
+/* Nút In-game: Đảm bảo đồng điệu 100% */
+.right-buttons { display: flex; gap: 10px; align-items: flex-start; justify-content: flex-end; }
 .top-btn { 
     padding: 0 15px; margin: 0; font-size: 14px; height: 38px; line-height: 38px; 
     border-radius: 5px; font-weight: bold; text-transform: uppercase; 
     cursor: pointer; border: none; font-family: inherit; color: #fff; pointer-events: auto;
+    display: inline-block; text-align: center; box-sizing: border-box;
 }
 .btn-chat { background: #ffaa00; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4); color: #000; }
 .btn-chat:hover { background: #ffcc00; transform: translateY(-2px); }
@@ -149,14 +153,12 @@ input:focus, select:focus { border-color: #00aaff; }
 @media screen and (max-height: 600px) and (orientation: landscape) {
     h1 { font-size: 28px; margin-bottom: 0;}
     .subtitle { font-size: 12px; margin-bottom: 10px;}
-    
     .btn { padding: 8px 15px; font-size: 14px;}
     
-    /* Thiết kế form nhập trên điện thoại để Tên = đúng 2 nút tạo */
-    .menu-box { width: 410px; } /* Vừa vặn 2 nút x 200px + 10px khoảng cách */
+    /* Thiết kế form nhập trên điện thoại: Tên = đúng 2 nút tạo (200 + 200 + 10 gap = 410px) */
+    .menu-box { max-width: 410px; } 
     .menu-buttons { flex-direction: row; }
     .menu-buttons .btn { width: 200px; margin: 0; }
-    #myPlayerName { margin-bottom: 5px; }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 15px; width: 90%; max-width: 500px; margin-bottom: 10px;}
     .form-group { width: 100%; margin-bottom: 5px;}

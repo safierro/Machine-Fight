@@ -44,7 +44,7 @@ let myPlayer = {
     facingAngle: 0 
 };
 
-// Tốc độ di chuyển nền tảng (Base Speed tại 60 FPS)
+// Tốc độ chuẩn 60FPS
 const BASE_SPEED = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
@@ -317,7 +317,6 @@ async function attemptJoinRoom(rId, roomData, btnElement) {
     }
 }
 
-// --- ĐỒNG BỘ PHÒNG THỜI GIAN THỰC ---
 let unsubscribeRoom = null; let unsubscribeChat = null;
 
 function enterLobby(rId, rName, amIHost, maxP) {
@@ -352,11 +351,11 @@ function listenToCurrentRoom() {
             isHost = false;
         }
         
-        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY TRONG LUỒNG MẠNG THỜI GIAN THỰC
+        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY LẬP TỨC CHO HOST
         if (isHost && data.status === 'PLAYING') {
             let aliveCount = Object.values(players).filter(p => p && p.isAlive).length;
             let totalPlayers = Object.keys(players).length;
-            // Nếu có nhiều người chơi mà chỉ còn 1 sống, hoặc chơi 1 mình mà chết -> KẾT THÚC NGAY
+            // ÉP END GAME NGAY TỨC THÌ NẾU CÒN 1 NGƯỜI
             if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
                 updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' }).catch(()=>{});
             }
@@ -399,7 +398,6 @@ function listenToCurrentRoom() {
     });
 }
 
-// --- CƠ CHẾ SÓNG XUNG KÍCH ---
 function triggerPush() {
     if (!gameActive || !myPlayer.isAlive) return;
     const now = Date.now();
@@ -779,19 +777,20 @@ function sync3DPlayers() {
     }
 }
 
-// --- CẬP NHẬT RENDER LOOP VÀ DELTA TIME ĐỂ CÂN BẰNG MOBILE/PC ---
+// BẢO VỆ CHỐNG LỖI MÀN HÌNH ĐEN (NAN PROTECTION) + DELTA TIME CHUẨN
 let lastFrameTime = performance.now();
 
 function animate() {
     requestAnimationFrame(animate);
     
-    // TÍNH TOÁN DELTA TIME 
     let now = performance.now();
-    let dt = (now - lastFrameTime) / 1000; 
+    let dt = (now - lastFrameTime) / 1000;
+    // Chống lỗi âm hoặc NaN khi giật lag
+    if (isNaN(dt) || dt < 0) dt = 0.016; 
+    if (dt > 0.1) dt = 0.1; // Capped ở 10fps để không dịch chuyển đột ngột
     lastFrameTime = now;
-    if (dt > 0.1) dt = 0.1; 
     
-    let timeScale = dt * 60; // Tỉ lệ với khung hình chuẩn 60fps
+    let timeScale = dt * 60; // Base 60fps
     frameCount++;
 
     pushEffects.forEach((eff, index) => {
@@ -829,6 +828,8 @@ function animate() {
             tb.style.opacity = 1; 
         }
 
+        let tileLerp = Math.min(0.1 * timeScale, 1); // An toàn tuyệt đối không dùng pow
+        
         tiles.forEach((tile, index) => {
             if (serverHoles.includes(index)) {
                 tile.userData.targetY = -2.5; 
@@ -844,37 +845,36 @@ function animate() {
                 }
                 else if (serverPhase === 'LOCKED') {
                     tile.userData.targetY = -0.25;
+                    let targetL = serverTargetLetter || 'X'; // Bảo vệ nếu host gửi rỗng
                     if (serverSafeTiles.includes(index)) {
-                        tile.material = matsNormal[serverTargetLetter]; 
+                        tile.material = matsNormal[targetL]; 
                     } else {
-                        let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                        let dl = serverDangerLetters[index] || lettersList.filter(l => l !== targetL)[0];
                         tile.material = matsNormal[dl]; 
                     }
                 }
                 else if (serverPhase === 'DROP') {
+                    let targetL = serverTargetLetter || 'X';
                     if (serverSafeTiles.includes(index)) {
-                        tile.material = matsNormal[serverTargetLetter]; 
+                        tile.material = matsNormal[targetL]; 
                     } else {
-                        let dl = serverDangerLetters[index] || lettersList.filter(l => l !== serverTargetLetter)[0];
+                        let dl = serverDangerLetters[index] || lettersList.filter(l => l !== targetL)[0];
                         tile.material = matsNormal[dl]; 
                         tile.userData.targetY = -2.5; 
                     }
                 }
             }
-            // Lerp mượt chuẩn thời gian thực
-            let tileLerp = 1 - Math.pow(1 - 0.1, timeScale);
             tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, tileLerp);
         });
 
         if (myPlayer.isAlive) {
             if (document.activeElement !== inGameChatInput) {
-                // SỬ DỤNG TIMESCALE ĐỂ CÂN BẰNG TỐC ĐỘ DI CHUYỂN & MA SÁT CHO MỌI THIẾT BỊ
                 let currentMoveSpeed = BASE_SPEED * timeScale;
 
                 myPlayer.x += myPlayer.vx * timeScale;
                 myPlayer.z += myPlayer.vz * timeScale;
                 
-                let friction = Math.pow(0.85, timeScale);
+                let friction = Math.max(0, 1 - (0.15 * timeScale)); // Giảm tốc tuyến tính an toàn
                 myPlayer.vx *= friction;
                 myPlayer.vz *= friction;
                 if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
@@ -906,9 +906,9 @@ function animate() {
             scene.add(playerMeshes[myId]);
         }
         
-        let rotLerp = 1 - Math.pow(1 - 0.2, timeScale);
-        let posLerp = 1 - Math.pow(1 - 0.05, timeScale);
-        let camLerp = 1 - Math.pow(1 - 0.02, timeScale);
+        let rotLerp = Math.min(0.2 * timeScale, 1);
+        let posLerp = Math.min(0.05 * timeScale, 1);
+        let camLerp = Math.min(0.02 * timeScale, 1);
 
         playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, rotLerp);
         playerMeshes[myId].position.x = myPlayer.x;

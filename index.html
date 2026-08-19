@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Machine Party - Alphabet Survival</title>
+    
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
+    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG -->
     <div id="rotateWarning">
         <div class="rotate-icon">📱</div>
-        <p>TRẢI NGHIỆM TỐT NHẤT Ở CHẾ ĐỘ NẰM NGANG</p>
+        <p>VUI LÒNG TẮT KHÓA XOAY VÀ<br>QUAY NGANG ĐIỆN THOẠI CỦA BẠN</p>
         <button id="btnAutoRotate" class="btn">BẬT TOÀN MÀN HÌNH</button>
     </div>
 
@@ -109,7 +111,7 @@
                 <span id="pushStatus">SÓNG ĐẨY: SẴN SÀNG</span>
             </div>
             <div class="right-buttons">
-                <!-- NÚT BẬT TẮT CHAT -->
+                <!-- NÚT BẬT TẮT CHAT ĐƯỢC CHUẨN HÓA KÍCH THƯỚC -->
                 <button class="top-btn btn-chat" id="btnToggleChat">💬 CHAT</button>
                 <button class="top-btn btn-leave" id="btnLeave">THOÁT PHÒNG</button>
             </div>
@@ -118,6 +120,7 @@
         <div id="targetBoard"></div>
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
         
+        <!-- KHUNG CHAT IN-GAME -->
         <div id="inGameChatContainer" class="hidden">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">
