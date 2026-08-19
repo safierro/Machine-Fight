@@ -1,3 +1,5 @@
+/* ================= TỔNG QUAN & RESET ================= */
+* { box-sizing: border-box; }
 body { margin: 0; overflow: hidden; background-color: #0a0a0a; color: #fff; font-family: 'Oswald', sans-serif; user-select: none; touch-action: none;}
 canvas { display: block; touch-action: none;}
 
@@ -9,11 +11,12 @@ canvas { display: block; touch-action: none;}
 .hidden { display: none !important; }
 
 h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px #ff0000; margin-bottom: 5px; text-transform: uppercase; text-align: center;}
-.subtitle { font-size: 16px; color: #888; margin-bottom: 30px; text-align: center;}
+.subtitle { font-size: 16px; color: #888; margin-bottom: 20px; text-align: center;}
 
+/* ================= NÚT BẤM ================= */
 .btn {
-    background: #0088ff; color: white; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; font-family: inherit;
-    cursor: pointer; border-radius: 5px; margin: 10px; width: 300px; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0, 136, 255, 0.4);
+    background: #0088ff; color: white; border: none; padding: 12px 25px; font-size: 18px; font-weight: bold; font-family: inherit;
+    cursor: pointer; border-radius: 5px; margin: 5px; width: 300px; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0, 136, 255, 0.4);
     transition: 0.2s;
 }
 .btn:hover { background: #00aaff; transform: translateY(-2px); }
@@ -22,125 +25,144 @@ h1 { font-size: 50px; color: #ff3333; letter-spacing: 5px; text-shadow: 0 0 10px
 .btn-secondary { background: #555; box-shadow: 0 4px 15px rgba(85, 85, 85, 0.4); }
 .btn-secondary:hover { background: #666; }
 
-.form-group { display: flex; flex-direction: column; width: 300px; margin-bottom: 15px; align-items: center; }
-.form-group label { color: #00aaff; font-size: 14px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; width: 100%; text-align: left; }
+.button-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+/* ================= FORM NHẬP LIỆU ================= */
+.form-grid { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 15px;}
+.form-group { display: flex; flex-direction: column; width: 300px; }
+.form-group label { color: #00aaff; font-size: 14px; margin-bottom: 2px; font-weight: bold; text-transform: uppercase;}
 input[type="text"], input[type="number"], input[type="password"], select {
-    padding: 12px; font-size: 16px; border-radius: 5px; border: 2px solid #333; background: #111; color: #fff; outline: none; font-family: inherit; width: 100%; box-sizing: border-box;
+    padding: 10px; font-size: 16px; border-radius: 5px; border: 2px solid #333; background: #111; color: #fff; outline: none; font-family: inherit; width: 100%;
 }
 input:focus, select:focus { border-color: #00aaff; }
+#myPlayerName { text-align: center; font-size: 22px; font-weight: bold; border-color: #0088ff; background: rgba(0, 136, 255, 0.1); width: 300px;}
 
-#myPlayerName { text-align: center; font-size: 22px; font-weight: bold; border-color: #0088ff; background: rgba(0, 136, 255, 0.1); }
-
-.room-browser { width: 90%; max-width: 800px; height: 50vh; background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 10px; padding: 20px; overflow-y: auto; margin-bottom: 20px;}
-.room-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #0088ff; }
+/* ================= DANH SÁCH PHÒNG ================= */
+.room-browser { width: 90%; max-width: 800px; height: 50vh; background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 10px; padding: 15px; overflow-y: auto; margin-bottom: 15px;}
+.room-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #0088ff; }
 .room-row.playing { border-left-color: #ff3333; opacity: 0.7; }
 .room-info { display: flex; flex-direction: column; }
-.room-name { font-size: 20px; font-weight: bold; color: #fff; }
-.room-details { font-size: 14px; color: #aaa; margin-top: 5px; }
+.room-name { font-size: 18px; font-weight: bold; color: #fff; }
+.room-details { font-size: 13px; color: #aaa; margin-top: 5px; }
 .room-details span { margin-right: 15px; }
-.btn-join { width: auto; padding: 10px 20px; margin: 0; font-size: 16px; }
+.btn-join { width: auto; padding: 8px 15px; margin: 0; font-size: 14px; }
 
-.lobby-container { display: flex; gap: 20px; width: 90%; max-width: 1000px; height: 60vh; }
-.panel { background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; }
-.panel-title { color: #00aaff; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+/* ================= SẢNH CHỜ ================= */
+.lobby-header { text-align: center; margin-bottom: 10px;}
+.lobby-header h1 { margin-bottom: 0; font-size: 35px;}
+.lobby-header .subtitle { margin-bottom: 0;}
+.lobby-container { display: flex; gap: 15px; width: 95%; max-width: 1000px; height: 65vh; }
+.panel { background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; flex: 1;}
+.panel-title { color: #00aaff; font-size: 20px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;}
 .player-list { flex: 1; list-style: none; padding: 0; margin: 0; overflow-y: auto; }
-.player-item { display: flex; align-items: center; padding: 10px; background: rgba(0,0,0,0.5); margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #fff; font-size: 18px; }
+.player-item { display: flex; align-items: center; padding: 8px; background: rgba(0,0,0,0.5); margin-bottom: 5px; border-radius: 5px; border-left: 4px solid #fff; font-size: 15px; }
 .player-color { width: 15px; height: 15px; border-radius: 50%; margin-right: 15px; border: 2px solid #fff; }
+.button-group-lobby { display: flex; flex-direction: column; gap: 5px; margin-top: 10px;}
+.button-group-lobby .btn { width: 100%; margin: 0; padding: 10px; font-size: 16px;}
 
-.color-picker-container { display: flex; align-items: center; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444; }
-.color-picker-container label { font-size: 14px; font-weight: bold; color: #fff; margin-right: 15px; text-transform: uppercase; }
-#colorPicker { -webkit-appearance: none; border: none; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; padding: 0; background: none; }
+.color-picker-container { display: flex; align-items: center; background: rgba(0,0,0,0.4); padding: 5px 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444; }
+.color-picker-container label { font-size: 13px; font-weight: bold; color: #fff; margin-right: 15px; text-transform: uppercase; }
+#colorPicker { -webkit-appearance: none; border: none; width: 35px; height: 35px; border-radius: 5px; cursor: pointer; padding: 0; background: none; }
 #colorPicker::-webkit-color-swatch-wrapper { padding: 0; }
 #colorPicker::-webkit-color-swatch { border: 2px solid #fff; border-radius: 5px; }
 
+/* Khung Chat */
 .chat-box { flex: 1; display: flex; flex-direction: column; height: 100%; }
-.chat-messages { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 15px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px;}
+.chat-messages { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px;}
 .chat-msg { padding: 5px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; }
 .chat-sys { color: #888; font-style: italic; }
-.chat-input-row { display: flex; gap: 10px; }
-.chat-input-row input { flex: 1; margin: 0; padding: 10px; font-size: 14px; }
-.chat-input-row button { margin: 0; width: 80px; padding: 10px; }
+.chat-input-row { display: flex; gap: 5px; }
+.chat-input-row input { flex: 1; margin: 0; padding: 8px; font-size: 14px; }
+.chat-input-row button { margin: 0; width: 70px; padding: 8px; font-size: 14px;}
 
+/* ================= IN-GAME UI ================= */
 #gameUI { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; display: none; }
-.top-bar { position: absolute; top: 20px; left: 20px; display: flex; justify-content: space-between; width: calc(100% - 40px); pointer-events: auto; }
-#roomCodeDisplay { font-size: 20px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333; display: flex; flex-direction: column;}
+.top-bar { position: absolute; top: 15px; left: 15px; display: flex; justify-content: space-between; width: calc(100% - 30px); pointer-events: auto; }
+#roomCodeDisplay { font-size: 16px; color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #333; display: flex; flex-direction: column;}
+#pushStatus { font-size: 12px; color: #00ff00; margin-top: 2px; font-weight: bold; } 
+#btnLeave { padding: 5px 15px; width: auto; margin: 0; font-size: 14px; pointer-events: auto; height: fit-content;}
 
-#pushStatus { font-size: 14px; color: #00ff00; margin-top: 5px; font-weight: bold; } 
+/* Tinh chỉnh lại Bảng Mục tiêu (Gọn gàng, Treo ở trên) */
+#targetBoard { 
+    position: absolute; top: 15px; left: 50%; transform: translateX(-50%); 
+    font-size: 40px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); 
+    padding: 5px 30px; border: 3px solid #444; border-radius: 10px; 
+    box-shadow: 0 0 15px rgba(0,0,0,0.8); transition: border-color 0.3s; 
+    min-height: 60px; min-width: 100px; display: flex; align-items: center; justify-content: center; 
+}
+#statusText { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; color: #ff0000; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 20px #ff0000; display: none; z-index: 90;}
 
-#btnLeave { padding: 5px 15px; width: auto; margin: 0; font-size: 16px; pointer-events: auto; }
-#targetBoard { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font-size: 80px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.8); padding: 10px 50px; border: 4px solid #444; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.8); transition: border-color 0.3s; min-height: 120px; min-width: 150px; display: flex; align-items: center; justify-content: center; }
-#statusText { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; color: #ff0000; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 20px #ff0000; display: none; z-index: 90;}
-#inGameChatContainer { position: absolute; bottom: 20px; left: 20px; width: 350px; background: rgba(0,0,0,0.4); border-radius: 5px; display: flex; flex-direction: column; pointer-events: auto; border: 1px solid #333; }
-#inGameChatMessages { height: 150px; overflow-y: auto; padding: 10px; font-size: 14px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px; }
-#inGameChatInput { margin: 0; width: 100%; padding: 10px; font-size: 14px; border: none; border-top: 1px solid #444; border-radius: 0 0 5px 5px; box-sizing: border-box; background: rgba(0,0,0,0.8); color: #fff; }
+#inGameChatContainer { position: absolute; bottom: 20px; left: 20px; width: 300px; background: rgba(0,0,0,0.4); border-radius: 5px; display: flex; flex-direction: column; pointer-events: auto; border: 1px solid #333; }
+#inGameChatMessages { height: 120px; overflow-y: auto; padding: 10px; font-size: 13px; font-family: sans-serif; display: flex; flex-direction: column; gap: 5px; }
+#inGameChatInput { margin: 0; width: 100%; padding: 8px; font-size: 13px; border: none; border-top: 1px solid #444; border-radius: 0 0 5px 5px; box-sizing: border-box; background: rgba(0,0,0,0.8); color: #fff; }
 
-#scoreboard { display: flex; flex-direction: column; width: 100%; max-width: 700px; margin-top: 20px; }
-.score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 15px 25px; margin-bottom: 5px; border-radius: 5px; font-size: 20px; font-weight: bold;}
-.score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; background: rgba(0, 170, 255, 0.1); }
+/* Scoreboard */
+#scoreboard { display: flex; flex-direction: column; width: 90%; max-width: 600px; margin-top: 10px; max-height: 40vh; overflow-y: auto;}
+.score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 10px 20px; margin-bottom: 5px; border-radius: 5px; font-size: 16px; font-weight: bold;}
+.score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; background: rgba(0, 170, 255, 0.1); position: sticky; top: 0;}
 
 /* ================= CẢNH BÁO XOAY MÀN HÌNH ================= */
 #rotateWarning {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    background: #0a0a0a;
-    z-index: 9999;
-    color: #00aaff;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #0a0a0a; z-index: 9999; color: #00aaff; flex-direction: column;
+    justify-content: center; align-items: center; text-align: center;
 }
-#rotateWarning p { font-size: 20px; font-weight: bold; margin-top: 20px; font-family: 'Oswald', sans-serif;}
+#rotateWarning p { font-size: 18px; font-weight: bold; margin-top: 20px; padding: 0 20px;}
 .rotate-icon { font-size: 60px; animation: spinRotate 2s infinite ease-in-out; }
-@keyframes spinRotate { 
-    0% { transform: rotate(0deg); } 
-    50% { transform: rotate(-90deg); } 
-    100% { transform: rotate(0deg); } 
-}
+@keyframes spinRotate { 0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
 
 /* ================= ĐIỀU KHIỂN MOBILE ================= */
 #mobileControls { display: none; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 80; }
 #joystickZone {
-    position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px;
+    position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px;
     background: rgba(255, 255, 255, 0.1); border-radius: 50%; pointer-events: auto;
     border: 3px solid rgba(255,255,255,0.3); display: flex; justify-content: center; align-items: center;
 }
 #joystickKnob {
-    width: 60px; height: 60px; background: rgba(255, 255, 255, 0.7);
+    width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7);
     border-radius: 50%; pointer-events: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 #pushBtnMobile {
-    position: absolute; bottom: 50px; right: 40px; width: 90px; height: 90px;
+    position: absolute; bottom: 40px; right: 30px; width: 80px; height: 80px;
     background: rgba(0, 255, 0, 0.3); border: 3px solid #00ff00;
     border-radius: 50%; pointer-events: auto; color: #fff; font-weight: bold; font-family: 'Oswald';
-    display: flex; justify-content: center; align-items: center; font-size: 20px; text-shadow: 1px 1px 2px #000; box-shadow: 0 0 15px rgba(0,255,0,0.5);
+    display: flex; justify-content: center; align-items: center; font-size: 18px; text-shadow: 1px 1px 2px #000; box-shadow: 0 0 15px rgba(0,255,0,0.5);
 }
 
-/* ================= MEDIA QUERIES (CHO ĐIỆN THOẠI) ================= */
-@media screen and (max-width: 900px) {
-    h1 { font-size: 38px; }
-    .btn { width: 90%; max-width: 300px; padding: 12px 20px; font-size: 16px;}
-    .lobby-container { flex-direction: column; height: 80vh; gap: 10px; width: 95%;}
-    .panel { padding: 15px; }
+
+/* ================= MEDIA QUERIES (TỐI ƯU CHIỀU NGANG ĐIỆN THOẠI) ================= */
+@media screen and (max-height: 600px) and (orientation: landscape) {
+    h1 { font-size: 28px; margin-bottom: 0;}
+    .subtitle { font-size: 12px; margin-bottom: 10px;}
     
-    .top-bar { flex-direction: column; gap: 10px; }
-    #roomCodeDisplay { font-size: 16px; padding: 5px 10px;}
-    #btnLeave { width: fit-content; font-size: 14px; padding: 5px 10px;}
-    #targetBoard { top: 90px; font-size: 60px; min-width: 100px; min-height: 90px; padding: 5px 30px;}
+    .btn { padding: 8px 15px; font-size: 14px; width: 200px; margin: 3px;}
+    .button-group { flex-direction: row; justify-content: center;}
+
+    /* Tạo Phòng (Sử dụng Grid 2 cột để giảm chiều cao) */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 15px; width: 90%; max-width: 500px; margin-bottom: 10px;}
+    .form-group { width: 100%; margin-bottom: 5px;}
+    .form-group label { font-size: 12px; margin-bottom: 0;}
+    input[type="text"], input[type="number"], input[type="password"], select { padding: 6px; font-size: 14px;}
     
-    #inGameChatContainer { width: calc(100% - 40px); bottom: auto; top: 220px; height: 120px; background: rgba(0,0,0,0.2); }
-    #pushStatus { display: none; }
-    
-    /* Bật điều khiển Joystick trên điện thoại màn hình ngang */
+    /* Lobby Layout */
+    .lobby-header { margin-bottom: 5px;}
+    .lobby-container { flex-direction: row; height: 70vh;}
+    .panel { padding: 10px; }
+    .panel-title { font-size: 16px; margin-bottom: 5px;}
+    .player-item { padding: 5px; font-size: 14px; margin-bottom: 3px;}
+    .color-picker-container { padding: 5px; margin-bottom: 5px;}
+    .button-group-lobby { flex-direction: row; margin-top: 5px;}
+    .chat-messages { font-size: 12px;}
+
+    /* Bật Nút Điều khiển Mobile In-Game */
     #mobileControls { display: block; }
+    
+    /* Ẩn Khung Chat Ingame (Để nhường chỗ cho ngón tay bấm phím ảo) */
+    #inGameChatContainer { display: none !important; }
 }
 
-/* ================= CHẶN MÀN HÌNH DỌC ================= */
+/* ================= CHẶN MÀN HÌNH DỌC TRÊN ĐIỆN THOẠI ================= */
 @media screen and (max-width: 900px) and (orientation: portrait) {
-    /* Hiển thị màn hình đen bắt xoay ngang */
     #rotateWarning { display: flex !important; }
-    
-    /* Tắt hết tất cả giao diện bên dưới để không cho bấm */
     .screen, #gameUI { display: none !important; }
 }

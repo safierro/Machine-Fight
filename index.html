@@ -6,13 +6,10 @@
     <title>Machine Party - Alphabet Survival</title>
     
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Thư viện Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG & TOÀN MÀN HÌNH -->
     <div id="rotateWarning">
         <div class="rotate-icon">📱</div>
         <p>TRẢI NGHIỆM TỐT NHẤT Ở CHẾ ĐỘ NẰM NGANG</p>
@@ -29,50 +26,58 @@
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
-        <div class="form-group" style="margin-bottom: 30px;">
+        <div class="form-group" style="margin-bottom: 20px;">
             <input type="text" id="myPlayerName" placeholder="TÊN (VD: safierro)..." maxlength="12">
         </div>
-        <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
-        <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
+        <div class="button-group">
+            <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
+            <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
+        </div>
     </div>
 
     <!-- TẠO PHÒNG -->
     <div id="createRoomScreen" class="screen hidden">
         <h1>TẠO PHÒNG</h1>
-        <div class="form-group"><label>Tên phòng</label><input type="text" id="crRoomName" placeholder="Nhập tên phòng..." maxlength="20"></div>
-        <div class="form-group"><label>Số người (2-8)</label><input type="number" id="crMaxPlayers" min="2" max="8" value="8"></div>
-        <div class="form-group">
-            <label>Chế độ phòng</label>
-            <select id="crPrivacy"><option value="public">Tự do</option><option value="private">Riêng tư</option></select>
+        <div class="form-grid">
+            <div class="form-group"><label>Tên phòng</label><input type="text" id="crRoomName" placeholder="Nhập tên..." maxlength="20"></div>
+            <div class="form-group"><label>Số người (2-8)</label><input type="number" id="crMaxPlayers" min="2" max="8" value="8"></div>
+            <div class="form-group">
+                <label>Chế độ phòng</label>
+                <select id="crPrivacy"><option value="public">Tự do</option><option value="private">Riêng tư</option></select>
+            </div>
+            <div class="form-group hidden" id="crPasswordGroup"><label>Mật khẩu</label><input type="text" id="crPassword" placeholder="Nhập mật khẩu..." maxlength="15"></div>
         </div>
-        <div class="form-group hidden" id="crPasswordGroup"><label>Mật khẩu</label><input type="text" id="crPassword" placeholder="Nhập mật khẩu..." maxlength="15"></div>
-        <button class="btn" id="btnCreateRoomSubmit">TẠO VÀ VÀO PHÒNG</button>
-        <button class="btn btn-secondary" id="btnBackFromCreate">QUAY LẠI</button>
+        <div class="button-group">
+            <button class="btn" id="btnCreateRoomSubmit">TẠO VÀ VÀO PHÒNG</button>
+            <button class="btn btn-secondary" id="btnBackFromCreate">QUAY LẠI</button>
+        </div>
     </div>
 
     <!-- DANH SÁCH PHÒNG -->
     <div id="joinRoomScreen" class="screen hidden">
         <h1>DANH SÁCH PHÒNG</h1>
         <div class="room-browser" id="roomListUI"></div>
-        <button class="btn btn-secondary" id="btnBackFromJoin">QUAY LẠI</button>
+        <button class="btn btn-secondary" id="btnBackFromJoin" style="width: 200px;">QUAY LẠI</button>
     </div>
 
     <!-- SẢNH CHỜ -->
     <div id="lobbyScreen" class="screen hidden">
-        <h1 id="lobbyTitle">SẢNH CHỜ</h1>
-        <div class="subtitle" id="lobbyRoomDisplay">PHÒNG: ĐANG TẢI...</div>
+        <div class="lobby-header">
+            <h1 id="lobbyTitle">SẢNH CHỜ</h1>
+            <div class="subtitle" id="lobbyRoomDisplay">PHÒNG: ĐANG TẢI...</div>
+        </div>
         <div class="lobby-container">
-            <div class="panel" style="flex: 1;">
+            <div class="panel">
                 <div class="panel-title" id="lobbyPlayerCountTitle">NGƯỜI CHƠI (0/8)</div>
-                
                 <div class="color-picker-container">
-                    <label>Màu Robot Của Bạn:</label>
+                    <label>Màu Của Bạn:</label>
                     <input type="color" id="colorPicker" value="#ffffff">
                 </div>
-
                 <ul class="player-list" id="playerListUI"></ul>
-                <button class="btn" id="btnStartGame" style="width:100%; margin: 15px 0 0 0; display: none;">BẮT ĐẦU GAME</button>
-                <button class="btn btn-danger" id="btnExitLobby" style="width:100%; margin: 10px 0 0 0;">THOÁT PHÒNG</button>
+                <div class="button-group-lobby">
+                    <button class="btn" id="btnStartGame" style="display: none;">BẮT ĐẦU GAME</button>
+                    <button class="btn btn-danger" id="btnExitLobby">THOÁT PHÒNG</button>
+                </div>
             </div>
             <div class="panel chat-box">
                 <div class="panel-title">KÊNH CHAT</div>
@@ -85,13 +90,15 @@
         </div>
     </div>
 
-    <!-- KẾT THÚC (SCOREBOARD) -->
+    <!-- KẾT THÚC -->
     <div id="gameOverScreen" class="screen hidden">
-        <h1 style="font-size: 80px;">KẾT THÚC</h1>
+        <h1 style="font-size: 60px;">KẾT THÚC</h1>
         <div class="subtitle" id="winnerAnnouncement">Chờ thống kê...</div>
         <div id="scoreboard"></div>
-        <button class="btn" id="btnReturnLobby" style="margin-top: 40px; display: none;">QUAY LẠI SẢNH CHỜ</button>
-        <div class="subtitle" id="waitingHostText" style="margin-top: 20px;">Đang chờ chủ phòng...</div>
+        <div class="button-group">
+            <button class="btn" id="btnReturnLobby" style="display: none;">QUAY LẠI SẢNH CHỜ</button>
+        </div>
+        <div class="subtitle" id="waitingHostText" style="margin-top: 10px;">Đang chờ chủ phòng...</div>
     </div>
 
     <!-- UI GAME -->
@@ -99,27 +106,24 @@
         <div class="top-bar">
             <div id="roomCodeDisplay">
                 <span id="gameRoomNameText">Phòng: ???</span>
-                <span id="pushStatus">SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)</span>
+                <span id="pushStatus">SÓNG ĐẨY: SẴN SÀNG</span>
             </div>
             <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
         </div>
         <div id="targetBoard"></div>
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
+        
         <div id="inGameChatContainer">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">
         </div>
 
-        <!-- KHU VỰC ĐIỀU KHIỂN MOBILE (Ảo) -->
         <div id="mobileControls">
-            <div id="joystickZone">
-                <div id="joystickKnob"></div>
-            </div>
+            <div id="joystickZone"><div id="joystickKnob"></div></div>
             <div id="pushBtnMobile">ĐẨY</div>
         </div>
     </div>
 
-    <!-- Nhúng file JavaScript -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
