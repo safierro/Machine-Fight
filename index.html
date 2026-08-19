@@ -10,11 +10,11 @@
 </head>
 <body>
 
+    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG -->
     <div id="rotateWarning">
         <div class="rotate-icon">📱</div>
-        <p>TRẢI NGHIỆM TỐT NHẤT Ở CHẾ ĐỘ NẰM NGANG</p>
-        <button id="btnAutoRotate" class="btn">TỰ ĐỘNG XOAY & TOÀN MÀN HÌNH</button>
-        <p style="font-size: 14px; color: #888; margin-top: 15px;">(Hoặc tắt khóa xoay trên máy và tự quay ngang màn hình)</p>
+        <p>VUI LÒNG TẮT KHÓA XOAY VÀ<br>QUAY NGANG ĐIỆN THOẠI CỦA BẠN</p>
+        <button id="btnAutoRotate" class="btn">BẬT TOÀN MÀN HÌNH</button>
     </div>
 
     <div id="loadingScreen" class="screen">
@@ -26,7 +26,7 @@
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
-        <div class="form-group" style="margin-bottom: 20px;">
+        <div class="form-group input-center-wrapper">
             <input type="text" id="myPlayerName" placeholder="TÊN (VD: safierro)..." maxlength="12">
         </div>
         <div class="button-group">
@@ -108,12 +108,18 @@
                 <span id="gameRoomNameText">Phòng: ???</span>
                 <span id="pushStatus">SÓNG ĐẨY: SẴN SÀNG</span>
             </div>
-            <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
+            <div class="right-buttons">
+                <!-- NÚT BẬT TẮT CHAT -->
+                <button class="btn btn-secondary" id="btnToggleChat" style="padding: 5px 10px; width: auto; margin: 0; font-size: 14px;">💬 CHAT</button>
+                <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
+            </div>
         </div>
+        
         <div id="targetBoard"></div>
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
         
-        <div id="inGameChatContainer">
+        <!-- KHUNG CHAT IN-GAME (Thu nhỏ & Di chuyển sang Phải) -->
+        <div id="inGameChatContainer" class="hidden">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">
         </div>

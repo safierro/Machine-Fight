@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// CẤU HÌNH FIREBASE 
 const myFirebaseConfig = {
     apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
     authDomain: "machine-fight.firebaseapp.com",
@@ -17,7 +16,6 @@ const app = initializeApp(myFirebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- BIẾN TOÀN CỤC ---
 let myId = null;
 let myName = "Player";
 let currentRoomId = null;
@@ -72,25 +70,29 @@ function showScreen(screenName) {
     if(screens[screenName]) screens[screenName].classList.remove('hidden');
 }
 
-// ================= API AUTO-ROTATE FULLSCREEN =================
+// ================= NÚT BẬT TẮT CHAT =================
+const btnToggleChat = document.getElementById('btnToggleChat');
+const inGameChatContainer = document.getElementById('inGameChatContainer');
+if (btnToggleChat && inGameChatContainer) {
+    btnToggleChat.addEventListener('click', () => {
+        inGameChatContainer.classList.toggle('hidden');
+    });
+}
+
+// ================= IOS ROTATE BYPASS & FULLSCREEN =================
 const btnAutoRotate = document.getElementById('btnAutoRotate');
 if (btnAutoRotate) {
     btnAutoRotate.addEventListener('click', async () => {
         try {
             let elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                await elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) { // Dành cho iOS Safari
-                await elem.webkitRequestFullscreen();
-            }
+            if (elem.requestFullscreen) await elem.requestFullscreen();
+            else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
             
-            // Ép xoay ngang
             if (screen.orientation && screen.orientation.lock) {
-                await screen.orientation.lock("landscape");
+                await screen.orientation.lock("landscape").catch(()=>{});
             }
         } catch (error) {
-            console.log(error);
-            alert("Hệ điều hành của bạn (ví dụ: iOS Safari) chặn tính năng tự động xoay. Vui lòng kéo thanh công cụ, tắt Khóa xoay và tự quay ngang máy nhé!");
+            // Nuốt lỗi cảnh báo tự động trên iOS, bắt người dùng phải quay ngang vật lý
         }
     });
 }
@@ -390,7 +392,7 @@ function listenToCurrentRoom() {
     });
 }
 
-// --- CƠ CHẾ SÓNG XUNG KÍCH CHUNG ---
+// --- CƠ CHẾ SÓNG XUNG KÍCH ---
 function triggerPush() {
     if (!gameActive || !myPlayer.isAlive) return;
     const now = Date.now();
@@ -411,7 +413,7 @@ function triggerPush() {
 
     setTimeout(() => { 
         if (gameActive) { 
-            statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; 
+            statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG"; 
             statusUI.style.color = "#00ff00"; 
             if(mobileBtn) {
                 mobileBtn.style.background = "rgba(0, 255, 0, 0.3)";
@@ -651,11 +653,15 @@ function startGameClient(roomName) {
     showScreen('');
     document.getElementById('gameUI').style.display = 'block';
     document.getElementById('gameRoomNameText').innerText = `Phòng: ${roomName}`;
-    document.getElementById('pushStatus').innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)";
+    document.getElementById('pushStatus').innerText = "SÓNG ĐẨY: SẴN SÀNG";
     document.getElementById('pushStatus').style.color = "#00ff00";
 
     gameActive = true; 
     document.getElementById('statusText').style.display = 'none';
+
+    // Đặt khung chat về ẩn khi vào game trên mobile, bấm nút Chat để hiện
+    const chatContainer = document.getElementById('inGameChatContainer');
+    if (chatContainer) chatContainer.classList.add('hidden');
 
     myPlayer.x = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
     myPlayer.z = (Math.floor(Math.random() * gridSize) - Math.floor(gridSize/2)) * tileSize;
@@ -694,11 +700,6 @@ async function forceLeaveRoom(reason = "") {
     }
     
     currentRoomId = null; isHost = false; myPlayer.vx = 0; myPlayer.vz = 0; serverPhase = 'IDLE';
-    
-    // Thoát Fullscreen trên di động
-    if (document.fullscreenElement) {
-        document.exitFullscreen().catch(()=>{});
-    }
 }
 
 window.addEventListener('beforeunload', () => {
