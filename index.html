@@ -2,10 +2,10 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Machine Party - Alphabet Survival</title>
     
-    <!-- FIX LỖI: Đã sửa tên file gọi vào thành style.css cho khớp với file của bạn -->
+    <!-- Nhúng file CSS -->
     <link rel="stylesheet" href="style.css">
     
     <!-- Thư viện Three.js -->
@@ -101,6 +101,16 @@
         <div id="inGameChatContainer">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">
+        </div>
+
+        <!-- KHU VỰC ĐIỀU KHIỂN MOBILE (Ảo) -->
+        <div id="mobileControls">
+            <!-- Joystick di chuyển (Trái) -->
+            <div id="joystickZone">
+                <div id="joystickKnob"></div>
+            </div>
+            <!-- Nút đẩy (Phải) -->
+            <div id="pushBtnMobile">ĐẨY</div>
         </div>
     </div>
 

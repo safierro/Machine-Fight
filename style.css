@@ -1,5 +1,5 @@
-body { margin: 0; overflow: hidden; background-color: #0a0a0a; color: #fff; font-family: 'Oswald', sans-serif; user-select: none; }
-canvas { display: block; }
+body { margin: 0; overflow: hidden; background-color: #0a0a0a; color: #fff; font-family: 'Oswald', sans-serif; user-select: none; touch-action: none;}
+canvas { display: block; touch-action: none;}
 
 .screen {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -77,3 +77,42 @@ input:focus, select:focus { border-color: #00aaff; }
 #scoreboard { display: flex; flex-direction: column; width: 100%; max-width: 700px; margin-top: 20px; }
 .score-row { display: flex; justify-content: space-between; background: rgba(255,255,255,0.1); padding: 15px 25px; margin-bottom: 5px; border-radius: 5px; font-size: 20px; font-weight: bold;}
 .score-header { font-weight: bold; color: #00aaff; border-bottom: 2px solid #00aaff; background: rgba(0, 170, 255, 0.1); }
+
+/* ================= ĐIỀU KHIỂN MOBILE ================= */
+#mobileControls { display: none; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 80; }
+#joystickZone {
+    position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px;
+    background: rgba(255, 255, 255, 0.1); border-radius: 50%; pointer-events: auto;
+    border: 3px solid rgba(255,255,255,0.3); display: flex; justify-content: center; align-items: center;
+}
+#joystickKnob {
+    width: 60px; height: 60px; background: rgba(255, 255, 255, 0.7);
+    border-radius: 50%; pointer-events: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+#pushBtnMobile {
+    position: absolute; bottom: 50px; right: 40px; width: 90px; height: 90px;
+    background: rgba(0, 255, 0, 0.3); border: 3px solid #00ff00;
+    border-radius: 50%; pointer-events: auto; color: #fff; font-weight: bold; font-family: 'Oswald';
+    display: flex; justify-content: center; align-items: center; font-size: 20px; text-shadow: 1px 1px 2px #000; box-shadow: 0 0 15px rgba(0,255,0,0.5);
+}
+
+/* ================= MEDIA QUERIES (CHO ĐIỆN THOẠI) ================= */
+@media screen and (max-width: 768px) {
+    h1 { font-size: 38px; }
+    .btn { width: 90%; max-width: 300px; padding: 12px 20px; font-size: 16px;}
+    .lobby-container { flex-direction: column; height: 80vh; gap: 10px; width: 95%;}
+    .panel { padding: 15px; }
+    
+    /* Thu gọn top-bar và bảng thông tin in-game */
+    .top-bar { flex-direction: column; gap: 10px; }
+    #roomCodeDisplay { font-size: 16px; padding: 5px 10px;}
+    #btnLeave { width: fit-content; font-size: 14px; padding: 5px 10px;}
+    #targetBoard { top: 90px; font-size: 60px; min-width: 100px; min-height: 90px; padding: 5px 30px;}
+    
+    /* Thu gọn khung chat In-Game để nhường chỗ cho Joystick */
+    #inGameChatContainer { width: calc(100% - 40px); bottom: auto; top: 220px; height: 120px; background: rgba(0,0,0,0.2); }
+    #pushStatus { display: none; } /* Trên điện thoại nhìn nút là biết hồi hay chưa */
+    
+    /* Hiện hệ thống Joystick trên điện thoại */
+    #mobileControls { display: block; }
+}
