@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Machine Party - Alphabet Survival</title>
     
-    <!-- Nhúng file CSS -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Thư viện Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+
+    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG (MỚI THÊM) -->
+    <div id="rotateWarning">
+        <div class="rotate-icon">↻</div>
+        <p>VUI LÒNG XOAY NGANG ĐIỆN THOẠI<br>ĐỂ TRẢI NGHIỆM GAME</p>
+    </div>
 
     <div id="loadingScreen" class="screen">
         <h1>MACHINE PARTY</h1>
@@ -105,16 +108,13 @@
 
         <!-- KHU VỰC ĐIỀU KHIỂN MOBILE (Ảo) -->
         <div id="mobileControls">
-            <!-- Joystick di chuyển (Trái) -->
             <div id="joystickZone">
                 <div id="joystickKnob"></div>
             </div>
-            <!-- Nút đẩy (Phải) -->
             <div id="pushBtnMobile">ĐẨY</div>
         </div>
     </div>
 
-    <!-- Nhúng file JavaScript -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
