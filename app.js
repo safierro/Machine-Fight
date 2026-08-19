@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// CẤU HÌNH FIREBASE 
 const myFirebaseConfig = {
     apiKey: "AIzaSyCROSjuKFCXot5arfyhniAr7dVNzGiSlcc",
     authDomain: "machine-fight.firebaseapp.com",
@@ -17,7 +16,6 @@ const app = initializeApp(myFirebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- BIẾN TOÀN CỤC ---
 let myId = null;
 let myName = "Player";
 let currentRoomId = null;
@@ -44,7 +42,7 @@ let myPlayer = {
     facingAngle: 0 
 };
 
-// Tốc độ di chuyển chuẩn (Delta Time)
+// Tốc độ nền tảng chuẩn 60FPS
 const BASE_SPEED = 0.025; 
 const keys = { w: false, a: false, s: false, d: false };
 const gridSize = 9;
@@ -73,7 +71,6 @@ function showScreen(screenName) {
     if(screens[screenName]) screens[screenName].classList.remove('hidden');
 }
 
-// ================= NÚT BẬT TẮT CHAT =================
 const btnToggleChat = document.getElementById('btnToggleChat');
 const inGameChatContainer = document.getElementById('inGameChatContainer');
 if (btnToggleChat && inGameChatContainer) {
@@ -94,7 +91,6 @@ if (btnAutoRotate) {
     });
 }
 
-// --- KHỞI TẠO ĐỒ HỌA THREE.JS ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a0a);
 scene.fog = new THREE.Fog(0x0a0a0a, 15, 60);
@@ -210,8 +206,9 @@ document.getElementById('navJoinRoom').onclick = () => {
 document.getElementById('colorPicker').addEventListener('change', async (e) => {
     if (!currentRoomId || !myId) return;
     const hexVal = parseInt(e.target.value.replace('#', '0x'), 16);
-    myPlayer.color = hexVal;
-    await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}.color`]: hexVal }).catch(()=>{});
+    // Bảo vệ lỗi NaN khi chọn màu
+    myPlayer.color = isNaN(hexVal) ? 0xffffff : hexVal;
+    await updateDoc(doc(db, "rooms", currentRoomId), { [`players.${myId}.color`]: myPlayer.color }).catch(()=>{});
 });
 
 document.getElementById('crPrivacy').onchange = (e) => { document.getElementById('crPasswordGroup').classList.toggle('hidden', e.target.value === 'public'); };
@@ -234,7 +231,8 @@ document.getElementById('btnCreateRoomSubmit').onclick = async function() {
     btn.innerText = "ĐANG TẠO...";
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
+    let startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
+    if(isNaN(startColor)) startColor = 0xffffff;
     myPlayer.color = startColor;
     
     try {
@@ -245,7 +243,7 @@ document.getElementById('btnCreateRoomSubmit').onclick = async function() {
         });
         enterLobby(newRoomId, name, true, maxP);
     } catch (error) { 
-        alert("Lỗi mạng.\nChi tiết: " + error.message); 
+        alert("Lỗi khi tạo phòng: Do bạn chưa cấp quyền Firebase Database (Security Rules) hoặc lỗi mạng.\n\nChi tiết: " + error.message); 
     } finally {
         btn.disabled = false;
         btn.innerText = "TẠO VÀ VÀO PHÒNG";
@@ -265,7 +263,10 @@ function listenToRoomList() {
             const data = docSnap.data(); const rId = docSnap.id;
             const pCount = data.players ? Object.keys(data.players).length : 0;
             
-            if (pCount === 0 || !data.maxPlayers) return; // Chỉ bỏ qua không xóa rác để chống kẹt
+            if (pCount === 0 || !data.maxPlayers) {
+                deleteDoc(doc(db, "rooms", rId)).catch(()=>{});
+                return;
+            }
 
             const maxPlayers = data.maxPlayers || 8;
             const isPlaying = data.status !== 'LOBBY';
@@ -300,7 +301,8 @@ async function attemptJoinRoom(rId, roomData, btnElement) {
     btnElement.disabled = true;
     btnElement.innerText = "ĐANG VÀO...";
 
-    const startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
+    let startColor = parseInt(document.getElementById('colorPicker').value.replace('#', '0x'), 16);
+    if(isNaN(startColor)) startColor = 0xffffff;
     myPlayer.color = startColor;
     
     try {
@@ -349,11 +351,10 @@ function listenToCurrentRoom() {
             isHost = false;
         }
         
-        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY LẬP TỨC (REAL-TIME) CHO HOST
+        // KIỂM TRA ĐIỀU KIỆN KẾT THÚC NGAY LẬP TỨC CHO HOST (QUÉT SỐNG CÒN REAL-TIME)
         if (isHost && data.status === 'PLAYING') {
             let aliveCount = Object.values(players).filter(p => p && p.isAlive).length;
             let totalPlayers = Object.keys(players).length;
-            // End Game nhanh như chớp nếu thoả điều kiện
             if (totalPlayers > 0 && (aliveCount === 0 || (aliveCount === 1 && totalPlayers > 1))) {
                 updateDoc(doc(db, "rooms", currentRoomId), { status: 'GAMEOVER' }).catch(()=>{});
             }
@@ -375,8 +376,9 @@ function listenToCurrentRoom() {
             const serverMe = data.players[myId];
             if (serverMe.push && serverMe.push.time !== myPlayer.lastPushTime) {
                 myPlayer.lastPushTime = serverMe.push.time;
-                myPlayer.vx = serverMe.push.nx || 0;
-                myPlayer.vz = serverMe.push.nz || 0;
+                // An toàn khi nhận lực văng
+                myPlayer.vx = (typeof serverMe.push.nx === 'number' && !isNaN(serverMe.push.nx)) ? serverMe.push.nx : 0;
+                myPlayer.vz = (typeof serverMe.push.nz === 'number' && !isNaN(serverMe.push.nz)) ? serverMe.push.nz : 0;
             }
         }
 
@@ -452,13 +454,17 @@ function triggerPush() {
             while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
             
             if (Math.abs(angleDiff) <= Math.PI / 4) { 
-                let pushPower = Math.max(0.5, 1.2 - dist * 0.3); 
+                // Tính toán lực văng chuẩn xác tương đương 1-2 ô
+                let pushPower = 0.6 - (dist / 3.0) * 0.3; 
+                
                 const nx = (dx / dist) * pushPower;
                 const nz = (dz / dist) * pushPower;
                 
-                updateDoc(doc(db, "rooms", currentRoomId), {
-                    [`players.${uid}.push`]: { nx: nx, nz: nz, time: now }
-                }).catch(()=>{});
+                if (!isNaN(nx) && !isNaN(nz)) {
+                    updateDoc(doc(db, "rooms", currentRoomId), {
+                        [`players.${uid}.push`]: { nx: nx, nz: nz, time: now }
+                    }).catch(()=>{});
+                }
             }
         }
     }
@@ -510,6 +516,8 @@ if (joystickZone && joystickKnob) {
     });
 
     function updateJoystick(clientX, clientY) {
+        if (isNaN(joyStartX) || isNaN(joyStartY)) return;
+        
         const dx = clientX - joyStartX;
         const dy = clientY - joyStartY;
         const distance = Math.min(Math.sqrt(dx*dx + dy*dy), 40); 
@@ -679,14 +687,20 @@ function startGameClient(roomName) {
 
 function stopGameClient() {
     gameActive = false; document.getElementById('gameUI').style.display = 'none';
-    if (hostGameLoop) clearInterval(hostGameLoop);
+    if (hostGameLoop) {
+        clearInterval(hostGameLoop);
+        hostGameLoop = null; // Fix lỗi không tạo phòng mới được
+    }
     showScreen('lobby'); 
 }
 
 async function forceLeaveRoom(reason = "") {
     if(reason) alert(reason);
     gameActive = false; document.getElementById('gameUI').style.display = 'none';
-    if (hostGameLoop) clearInterval(hostGameLoop);
+    if (hostGameLoop) {
+        clearInterval(hostGameLoop);
+        hostGameLoop = null; // Fix lỗi kẹt game
+    }
     showScreen('mainMenu');
     
     if (unsubscribeRoom) unsubscribeRoom();
@@ -745,7 +759,9 @@ function showGameOver() {
 function updateLobbyUI() {
     const listUI = document.getElementById('playerListUI'); listUI.innerHTML = '';
     for (let uid in players) {
-        const p = players[uid]; const hexColor = '#' + p.color.toString(16).padStart(6, '0');
+        const p = players[uid]; 
+        let safeColor = (typeof p.color === 'number' && !isNaN(p.color)) ? p.color : 0xffffff;
+        const hexColor = '#' + safeColor.toString(16).padStart(6, '0');
         const hostTag = p.isHost ? ' 👑(Chủ)' : ''; const meTag = uid === myId ? ' (Bạn)' : '';
         const displayName = p.name || uid.substring(0,6);
         listUI.innerHTML += `<li class="player-item"><div class="player-color" style="background: ${hexColor}"></div><div>${displayName}${meTag}${hostTag}</div></li>`;
@@ -755,7 +771,7 @@ function updateLobbyUI() {
 function sync3DPlayers() {
     for (let id in playerMeshes) {
         if (!players[id]) { 
-            // FIX MEMORY LEAK TẠI ĐÂY (Xóa rác GPU khi người chơi thoát)
+            // Xóa rác đồ họa để chống màn hình đen
             let mesh = playerMeshes[id];
             scene.remove(mesh);
             mesh.traverse((child) => {
@@ -770,16 +786,17 @@ function sync3DPlayers() {
     for (let id in players) {
         if (id === myId) continue;
         const pData = players[id];
-        if (!pData || typeof pData.x !== 'number') continue; 
+        if (!pData || typeof pData.x !== 'number' || isNaN(pData.x) || isNaN(pData.z)) continue; 
 
         const displayName = pData.name || id.substring(0,4);
+        let safeColor = (typeof pData.color === 'number' && !isNaN(pData.color)) ? pData.color : 0xffffff;
         
         if (!playerMeshes[id]) {
-            playerMeshes[id] = createRobotModel(pData.color, displayName); 
+            playerMeshes[id] = createRobotModel(safeColor, displayName); 
             scene.add(playerMeshes[id]);
         } else {
-            if (playerMeshes[id].userData.bodyMat.color.getHex() !== pData.color) {
-                playerMeshes[id].userData.bodyMat.color.setHex(pData.color);
+            if (playerMeshes[id].userData.bodyMat.color.getHex() !== safeColor) {
+                playerMeshes[id].userData.bodyMat.color.setHex(safeColor);
             }
         }
         
@@ -789,177 +806,185 @@ function sync3DPlayers() {
     }
 }
 
-// BẢO VỆ CHỐNG LỖI MÀN HÌNH ĐEN & DELTA TIME
+// BẢO VỆ CHỐNG LỖI MÀN HÌNH ĐEN (NAN PROTECTION) TOÀN DIỆN
 let lastFrameTime = performance.now();
 
 function animate() {
     requestAnimationFrame(animate);
     
-    let now = performance.now();
-    let dt = (now - lastFrameTime) / 1000;
-    if (isNaN(dt) || dt < 0) dt = 0.016; 
-    if (dt > 0.1) dt = 0.1; // Capped ở 10fps để không dịch chuyển giật cục
-    lastFrameTime = now;
-    
-    let timeScale = dt * 60; // Base 60fps
-    frameCount++;
-
-    pushEffects.forEach((eff, index) => {
-        if(eff.type === 'cone') {
-            eff.scale += 0.2 * timeScale;
-            eff.mesh.translateZ(0.5 * timeScale); 
-        } else {
-            eff.scale += 0.15 * timeScale;
-        }
+    // Tự động chặn sập nguồn bằng try-catch
+    try {
+        let now = performance.now();
+        let dt = (now - lastFrameTime) / 1000;
+        // Chống mọi khả năng làm lag TimeScale
+        if (!dt || isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016; 
+        lastFrameTime = now;
         
-        eff.opacity -= 0.03 * timeScale;
-        eff.mesh.scale.set(eff.scale, eff.scale, eff.scale);
-        eff.mesh.material.opacity = eff.opacity;
-        if (eff.opacity <= 0) { 
-            // FIX LỖI TRÀN BỘ NHỚ LÀM ĐEN MÀN HÌNH (Dispose memory)
-            scene.remove(eff.mesh); 
-            eff.mesh.material.dispose();
-            pushEffects.splice(index, 1); 
-        }
-    });
+        let timeScale = dt * 60; 
+        frameCount++;
 
-    if (gameActive) {
-        const tb = document.getElementById('targetBoard');
-        
-        if (serverPhase === 'IDLE') {
-            tb.innerText = `VÒNG ${serverRound}`;
-            tb.style.borderColor = '#444';
-            tb.style.opacity = 1; 
-        }
-        else if (serverPhase === 'ROLLING') {
-            if (frameCount % 60 === 0) {
-                tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
+        // Dọn dẹp mảng Effect bằng vòng lặp lùi (chống lỗi Splice)
+        for (let i = pushEffects.length - 1; i >= 0; i--) {
+            let eff = pushEffects[i];
+            if(eff.type === 'cone') {
+                eff.scale += 0.2 * timeScale;
+                eff.mesh.translateZ(0.5 * timeScale); 
+            } else {
+                eff.scale += 0.15 * timeScale;
             }
-            tb.style.borderColor = '#00aaff';
-            tb.style.opacity = 0.2 + 0.8 * Math.abs(Math.sin(frameCount * 0.05)); 
-        }
-        else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
-            tb.innerText = serverTargetLetter;
-            tb.style.borderColor = '#00ff00';
-            tb.style.opacity = 1; 
+            
+            eff.opacity -= 0.03 * timeScale;
+            eff.mesh.scale.set(eff.scale, eff.scale, eff.scale);
+            eff.mesh.material.opacity = eff.opacity;
+            if (eff.opacity <= 0) { 
+                scene.remove(eff.mesh); 
+                eff.mesh.material.dispose();
+                pushEffects.splice(i, 1); 
+            }
         }
 
-        let tileLerp = Math.min(0.1 * timeScale, 1); 
-        
-        tiles.forEach((tile, index) => {
-            if (serverHoles.includes(index)) {
-                tile.userData.targetY = -2.5; 
-                tile.material = matBlank;
-            } 
-            else {
-                if (serverPhase === 'IDLE') {
-                    tile.userData.targetY = -0.25; tile.material = matBlank; 
+        if (gameActive) {
+            const tb = document.getElementById('targetBoard');
+            
+            if (serverPhase === 'IDLE') {
+                tb.innerText = `VÒNG ${serverRound}`;
+                tb.style.borderColor = '#444';
+                tb.style.opacity = 1; 
+            }
+            else if (serverPhase === 'ROLLING') {
+                if (frameCount % 60 === 0) {
+                    tb.innerText = lettersList[Math.floor(Math.random()*lettersList.length)];
+                }
+                tb.style.borderColor = '#00aaff';
+                tb.style.opacity = 0.2 + 0.8 * Math.abs(Math.sin(frameCount * 0.05)); 
+            }
+            else if (serverPhase === 'LOCKED' || serverPhase === 'DROP') {
+                tb.innerText = serverTargetLetter;
+                tb.style.borderColor = '#00ff00';
+                tb.style.opacity = 1; 
+            }
+
+            let tileLerp = Math.min(0.1 * timeScale, 1); 
+            
+            tiles.forEach((tile, index) => {
+                if (serverHoles.includes(index)) {
+                    tile.userData.targetY = -2.5; 
+                    tile.material = matBlank;
                 } 
-                else if (serverPhase === 'ROLLING') {
-                    tile.userData.targetY = -0.25; 
-                    if (frameCount % 40 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
-                }
-                else if (serverPhase === 'LOCKED') {
-                    tile.userData.targetY = -0.25;
-                    let targetL = serverTargetLetter || 'X'; 
-                    if (serverSafeTiles.includes(index)) {
-                        tile.material = matsNormal[targetL]; 
-                    } else {
-                        let dl = serverDangerLetters[index] || lettersList.filter(l => l !== targetL)[0];
-                        tile.material = matsNormal[dl]; 
+                else {
+                    if (serverPhase === 'IDLE') {
+                        tile.userData.targetY = -0.25; tile.material = matBlank; 
+                    } 
+                    else if (serverPhase === 'ROLLING') {
+                        tile.userData.targetY = -0.25; 
+                        if (frameCount % 40 === 0) tile.material = matsNormal[lettersList[Math.floor(Math.random()*lettersList.length)]];
+                    }
+                    else if (serverPhase === 'LOCKED') {
+                        tile.userData.targetY = -0.25;
+                        let targetL = serverTargetLetter || 'X'; // Failsafe
+                        if (serverSafeTiles.includes(index)) {
+                            tile.material = matsNormal[targetL]; 
+                        } else {
+                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== targetL)[0];
+                            tile.material = matsNormal[dl]; 
+                        }
+                    }
+                    else if (serverPhase === 'DROP') {
+                        let targetL = serverTargetLetter || 'X';
+                        if (serverSafeTiles.includes(index)) {
+                            tile.material = matsNormal[targetL]; 
+                        } else {
+                            let dl = serverDangerLetters[index] || lettersList.filter(l => l !== targetL)[0];
+                            tile.material = matsNormal[dl]; 
+                            tile.userData.targetY = -2.5; 
+                        }
                     }
                 }
-                else if (serverPhase === 'DROP') {
-                    let targetL = serverTargetLetter || 'X';
-                    if (serverSafeTiles.includes(index)) {
-                        tile.material = matsNormal[targetL]; 
-                    } else {
-                        let dl = serverDangerLetters[index] || lettersList.filter(l => l !== targetL)[0];
-                        tile.material = matsNormal[dl]; 
-                        tile.userData.targetY = -2.5; 
+                tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, tileLerp);
+            });
+
+            if (myPlayer.isAlive) {
+                if (document.activeElement !== inGameChatInput) {
+                    let currentMoveSpeed = BASE_SPEED * timeScale;
+
+                    myPlayer.x += myPlayer.vx * timeScale;
+                    myPlayer.z += myPlayer.vz * timeScale;
+                    
+                    let friction = Math.max(0, 1 - (0.15 * timeScale)); 
+                    myPlayer.vx *= friction;
+                    myPlayer.vz *= friction;
+                    if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
+                    if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
+
+                    let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+                    let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+                    
+                    if (dx_dir !== 0 || dz_dir !== 0) {
+                        let moveAngle = Math.atan2(dx_dir, dz_dir);
+                        myPlayer.facingAngle = moveAngle;
                     }
+
+                    if (keys.w) myPlayer.z -= currentMoveSpeed;
+                    if (keys.s) myPlayer.z += currentMoveSpeed;
+                    if (keys.a) myPlayer.x -= currentMoveSpeed;
+                    if (keys.d) myPlayer.x += currentMoveSpeed;
+
+                    const bound = (gridSize * tileSize) / 2 - 0.5;
+                    myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
+                    myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
+
+                    checkDeath(); 
                 }
             }
-            tile.position.y = THREE.MathUtils.lerp(tile.position.y, tile.userData.targetY, tileLerp);
-        });
 
-        if (myPlayer.isAlive) {
-            if (document.activeElement !== inGameChatInput) {
-                // TỐC ĐỘ DI CHUYỂN ĐỒNG BỘ MỌI THIẾT BỊ BẰNG TIMESCALE
-                let currentMoveSpeed = BASE_SPEED * timeScale;
+            if (!playerMeshes[myId]) {
+                // Bảo vệ màu người chơi
+                let pColor = isNaN(myPlayer.color) ? 0xffffff : myPlayer.color;
+                playerMeshes[myId] = createRobotModel(pColor, myName);
+                scene.add(playerMeshes[myId]);
+            }
+            
+            let rotLerp = Math.min(0.2 * timeScale, 1);
+            let posLerp = Math.min(0.05 * timeScale, 1);
+            let camLerp = Math.min(0.02 * timeScale, 1);
 
-                myPlayer.x += myPlayer.vx * timeScale;
-                myPlayer.z += myPlayer.vz * timeScale;
-                
-                let friction = Math.max(0, 1 - (0.15 * timeScale)); 
-                myPlayer.vx *= friction;
-                myPlayer.vz *= friction;
-                if (Math.abs(myPlayer.vx) < 0.01) myPlayer.vx = 0;
-                if (Math.abs(myPlayer.vz) < 0.01) myPlayer.vz = 0;
-
-                let dx_dir = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-                let dz_dir = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                
-                if (dx_dir !== 0 || dz_dir !== 0) {
-                    let moveAngle = Math.atan2(dx_dir, dz_dir);
-                    myPlayer.facingAngle = moveAngle;
+            playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, rotLerp);
+            
+            // CHỐNG NAN POSITION BẢO VỆ CONTEXT
+            if(!isNaN(myPlayer.x) && !isNaN(myPlayer.z)) {
+                playerMeshes[myId].position.x = myPlayer.x;
+                playerMeshes[myId].position.z = myPlayer.z;
+            }
+            
+            if (myPlayer.isAlive) {
+                playerMeshes[myId].position.y = 0; 
+                if(!isNaN(myPlayer.x) && !isNaN(myPlayer.z)){
+                    camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, posLerp);
+                    camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, posLerp);
+                    camera.lookAt(myPlayer.x, 0, myPlayer.z); 
                 }
-
-                if (keys.w) myPlayer.z -= currentMoveSpeed;
-                if (keys.s) myPlayer.z += currentMoveSpeed;
-                if (keys.a) myPlayer.x -= currentMoveSpeed;
-                if (keys.d) myPlayer.x += currentMoveSpeed;
-
-                const bound = (gridSize * tileSize) / 2 - 0.5;
-                myPlayer.x = THREE.MathUtils.clamp(myPlayer.x, -bound, bound);
-                myPlayer.z = THREE.MathUtils.clamp(myPlayer.z, -bound, bound);
-
-                checkDeath(); 
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, posLerp);
+                camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, posLerp); 
+            } else {
+                playerMeshes[myId].position.y = -2.5; 
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, camLerp);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, camLerp);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, camLerp); 
+                camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, camLerp); 
+                camera.lookAt(0, 0, 0); 
             }
+            camera.updateProjectionMatrix();
+            
+            uploadMyPosition();
         }
-
-        if (!playerMeshes[myId]) {
-            playerMeshes[myId] = createRobotModel(myPlayer.color, myName);
-            scene.add(playerMeshes[myId]);
-        }
+        renderer.render(scene, camera);
         
-        let rotLerp = Math.min(0.2 * timeScale, 1);
-        let posLerp = Math.min(0.05 * timeScale, 1);
-        let camLerp = Math.min(0.02 * timeScale, 1);
-
-        playerMeshes[myId].rotation.y = THREE.MathUtils.lerp(playerMeshes[myId].rotation.y, myPlayer.facingAngle, rotLerp);
-        
-        // CHỐNG NAN POSITION BẢO VỆ CONTEXT
-        if(!isNaN(myPlayer.x) && !isNaN(myPlayer.z)) {
-            playerMeshes[myId].position.x = myPlayer.x;
-            playerMeshes[myId].position.z = myPlayer.z;
-        }
-        
-        if (myPlayer.isAlive) {
-            playerMeshes[myId].position.y = 0; 
-            if(!isNaN(myPlayer.x) && !isNaN(myPlayer.z)){
-                camera.position.x = THREE.MathUtils.lerp(camera.position.x, myPlayer.x + 20, posLerp);
-                camera.position.z = THREE.MathUtils.lerp(camera.position.z, myPlayer.z + 20, posLerp);
-                camera.lookAt(myPlayer.x, 0, myPlayer.z); 
-            }
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 30, posLerp);
-            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, posLerp); 
-        } else {
-            playerMeshes[myId].position.y = -2.5; 
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, 20, camLerp);
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, 20, camLerp);
-            camera.position.y = THREE.MathUtils.lerp(camera.position.y, 45, camLerp); 
-            camera.zoom = THREE.MathUtils.lerp(camera.zoom, 0.5, camLerp); 
-            camera.lookAt(0, 0, 0); 
-        }
-        camera.updateProjectionMatrix();
-        
-        uploadMyPosition();
+    } catch(err) {
+        console.error("Game Loop Protection Activated:", err);
     }
-    renderer.render(scene, camera);
 }
 
-// BÁO CHẾT (ĐẨY LÊN SERVER NGAY LẬP TỨC ĐỂ KHÔNG BỊ TREO ROUND)
+// BÁO CHẾT: ĐẨY LÊN SERVER NGAY LẬP TỨC ĐỂ SERVER KẾT THÚC GAME
 function checkDeath() {
     if (!myPlayer.isAlive) return; 
     
@@ -990,7 +1015,7 @@ async function uploadMyPosition() {
     let now = Date.now();
     if (now - lastUpdate > 40) { 
         lastUpdate = now;
-        if (isNaN(myPlayer.x) || isNaN(myPlayer.z)) return; // Failsafe
+        if (isNaN(myPlayer.x) || isNaN(myPlayer.z)) return; // Cửa cuối chặn NaN
         
         await updateDoc(doc(db, "rooms", currentRoomId), {
             [`players.${myId}.x`]: myPlayer.x, [`players.${myId}.z`]: myPlayer.z,
