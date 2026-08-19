@@ -72,6 +72,29 @@ function showScreen(screenName) {
     if(screens[screenName]) screens[screenName].classList.remove('hidden');
 }
 
+// ================= API AUTO-ROTATE FULLSCREEN =================
+const btnAutoRotate = document.getElementById('btnAutoRotate');
+if (btnAutoRotate) {
+    btnAutoRotate.addEventListener('click', async () => {
+        try {
+            let elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                await elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) { // Dành cho iOS Safari
+                await elem.webkitRequestFullscreen();
+            }
+            
+            // Ép xoay ngang
+            if (screen.orientation && screen.orientation.lock) {
+                await screen.orientation.lock("landscape");
+            }
+        } catch (error) {
+            console.log(error);
+            alert("Hệ điều hành của bạn (ví dụ: iOS Safari) chặn tính năng tự động xoay. Vui lòng kéo thanh công cụ, tắt Khóa xoay và tự quay ngang máy nhé!");
+        }
+    });
+}
+
 // --- KHỞI TẠO ĐỒ HỌA THREE.JS ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a0a);
@@ -151,7 +174,6 @@ function createTileMaterial(letter, bgColorHex, textColorHex) {
     return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
 }
 
-// BẢO ĐẢM TẤT CẢ ĐỀU CÙNG 1 MÀU (CHỮ TRẮNG, NỀN XÁM ĐẬM)
 const matBlank = createTileMaterial('', '#444444', '#fff');
 const matsNormal = { 'X': createTileMaterial('X', '#333333', '#ffffff'), 'Y': createTileMaterial('Y', '#333333', '#ffffff'), 'Z': createTileMaterial('Z', '#333333', '#ffffff') };
 
@@ -171,7 +193,6 @@ for (let x = 0; x < gridSize; x++) {
 scene.add(floorGroup);
 const playerMeshes = {};
 
-// --- ĐĂNG NHẬP FIREBASE & UI ---
 signInAnonymously(auth).then((userCred) => {
     myId = userCred.user.uid;
     showScreen('mainMenu');
@@ -369,9 +390,9 @@ function listenToCurrentRoom() {
     });
 }
 
-// --- CƠ CHẾ SÓNG XUNG KÍCH (HÌNH NÓN) ---
-window.addEventListener('mousedown', (e) => {
-    if (!gameActive || !myPlayer.isAlive || document.activeElement === inGameChatInput) return;
+// --- CƠ CHẾ SÓNG XUNG KÍCH CHUNG ---
+function triggerPush() {
+    if (!gameActive || !myPlayer.isAlive) return;
     const now = Date.now();
     if (now - myCooldownTime < pushCooldown) return;
     
@@ -380,11 +401,28 @@ window.addEventListener('mousedown', (e) => {
     const statusUI = document.getElementById('pushStatus');
     statusUI.innerText = "SÓNG ĐẨY: ĐANG HỒI...";
     statusUI.style.color = "#888";
-    setTimeout(() => { if (gameActive) { statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; statusUI.style.color = "#00ff00"; } }, pushCooldown);
+    
+    const mobileBtn = document.getElementById('pushBtnMobile');
+    if(mobileBtn) {
+        mobileBtn.style.background = "rgba(255, 0, 0, 0.3)";
+        mobileBtn.style.borderColor = "#ff0000";
+        mobileBtn.innerText = "HỒI...";
+    }
+
+    setTimeout(() => { 
+        if (gameActive) { 
+            statusUI.innerText = "SÓNG ĐẨY: SẴN SÀNG (Click Chuột Trái)"; 
+            statusUI.style.color = "#00ff00"; 
+            if(mobileBtn) {
+                mobileBtn.style.background = "rgba(0, 255, 0, 0.3)";
+                mobileBtn.style.borderColor = "#00ff00";
+                mobileBtn.innerText = "ĐẨY";
+            }
+        } 
+    }, pushCooldown);
 
     const coneMat = new THREE.MeshBasicMaterial({ color: myPlayer.color, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
     const cone = new THREE.Mesh(coneGeo, coneMat);
-    
     cone.position.set(myPlayer.x, 0.5, myPlayer.z);
     cone.rotation.y = myPlayer.facingAngle;
 
@@ -418,7 +456,75 @@ window.addEventListener('mousedown', (e) => {
             }
         }
     }
+}
+
+window.addEventListener('mousedown', (e) => {
+    if(e.target.closest('#mobileControls') || e.target.closest('.top-bar') || e.target.closest('#inGameChatContainer')) return;
+    triggerPush();
 });
+
+const pushBtnMobile = document.getElementById('pushBtnMobile');
+if(pushBtnMobile) {
+    pushBtnMobile.addEventListener('touchstart', (e) => {
+        e.preventDefault(); 
+        triggerPush();
+    }, {passive: false});
+}
+
+// HỆ THỐNG VIRTUAL JOYSTICK CHO MOBILE
+const joystickZone = document.getElementById('joystickZone');
+const joystickKnob = document.getElementById('joystickKnob');
+
+let isDragging = false;
+let joyStartX, joyStartY;
+
+function resetKeys() { keys.w = keys.a = keys.s = keys.d = false; }
+
+if (joystickZone && joystickKnob) {
+    joystickZone.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        const touch = e.touches[0];
+        const rect = joystickZone.getBoundingClientRect();
+        joyStartX = rect.left + rect.width / 2;
+        joyStartY = rect.top + rect.height / 2;
+        updateJoystick(touch.clientX, touch.clientY);
+    }, {passive: false});
+
+    joystickZone.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault(); 
+        const touch = e.touches[0];
+        updateJoystick(touch.clientX, touch.clientY);
+    }, {passive: false});
+
+    joystickZone.addEventListener('touchend', () => {
+        isDragging = false;
+        joystickKnob.style.transform = `translate(0px, 0px)`;
+        resetKeys();
+    });
+
+    function updateJoystick(clientX, clientY) {
+        const dx = clientX - joyStartX;
+        const dy = clientY - joyStartY;
+        const distance = Math.min(Math.sqrt(dx*dx + dy*dy), 40); 
+        const angle = Math.atan2(dy, dx);
+        
+        joystickKnob.style.transform = `translate(${Math.cos(angle)*distance}px, ${Math.sin(angle)*distance}px)`;
+
+        resetKeys();
+        if (distance > 10) { 
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) keys.d = true; else keys.a = true;
+            } else {
+                if (dy > 0) keys.s = true; else keys.w = true;
+            }
+            if (Math.abs(dx) > 15 && Math.abs(dy) > 15) {
+                if(dx>0) keys.d=true; else keys.a=true;
+                if(dy>0) keys.s=true; else keys.w=true;
+            }
+        }
+    }
+}
 
 // HỆ THỐNG CHAT 
 function listenToChat() {
@@ -588,6 +694,11 @@ async function forceLeaveRoom(reason = "") {
     }
     
     currentRoomId = null; isHost = false; myPlayer.vx = 0; myPlayer.vz = 0; serverPhase = 'IDLE';
+    
+    // Thoát Fullscreen trên di động
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(()=>{});
+    }
 }
 
 window.addEventListener('beforeunload', () => {
@@ -790,13 +901,11 @@ function animate() {
         }
         camera.updateProjectionMatrix();
         
-        // CẬP NHẬT TỌA ĐỘ BẤT KỂ SỐNG CHẾT (ĐỂ SERVER BIẾT XÁC MÌNH Ở ĐÂU VÀ UPDATE KILLS)
         uploadMyPosition();
     }
     renderer.render(scene, camera);
 }
 
-// HÀM FIX LỖI ÉP GỬI CHẾT NGAY LẬP TỨC
 function checkDeath() {
     if (!myPlayer.isAlive) return; 
     
@@ -812,7 +921,6 @@ function checkDeath() {
         st.innerText = "BẠN ĐÃ ƯỚT"; st.style.display = 'block'; 
         setTimeout(() => { st.style.display = 'none'; }, 1000);
         
-        // FIX: Báo chết lập tức cho Server
         if(currentRoomId) {
              updateDoc(doc(db, "rooms", currentRoomId), {
                 [`players.${myId}.isAlive`]: false
@@ -823,7 +931,7 @@ function checkDeath() {
 
 let lastUpdate = 0;
 async function uploadMyPosition() {
-    if (!myPlayer.isAlive) return; // Nếu đã chết không cần gửi tọa độ cản trở mạng
+    if (!myPlayer.isAlive) return; 
 
     let now = Date.now();
     if (now - lastUpdate > 40) { 

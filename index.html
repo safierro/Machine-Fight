@@ -6,14 +6,18 @@
     <title>Machine Party - Alphabet Survival</title>
     
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Thư viện Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG (MỚI THÊM) -->
+    <!-- MÀN HÌNH YÊU CẦU XOAY NGANG & TOÀN MÀN HÌNH -->
     <div id="rotateWarning">
-        <div class="rotate-icon">↻</div>
-        <p>VUI LÒNG XOAY NGANG ĐIỆN THOẠI<br>ĐỂ TRẢI NGHIỆM GAME</p>
+        <div class="rotate-icon">📱</div>
+        <p>TRẢI NGHIỆM TỐT NHẤT Ở CHẾ ĐỘ NẰM NGANG</p>
+        <button id="btnAutoRotate" class="btn">TỰ ĐỘNG XOAY & TOÀN MÀN HÌNH</button>
+        <p style="font-size: 14px; color: #888; margin-top: 15px;">(Hoặc tắt khóa xoay trên máy và tự quay ngang màn hình)</p>
     </div>
 
     <div id="loadingScreen" class="screen">
@@ -115,6 +119,7 @@
         </div>
     </div>
 
+    <!-- Nhúng file JavaScript -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
