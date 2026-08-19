@@ -26,14 +26,12 @@
     <div id="mainMenuScreen" class="screen hidden">
         <h1>MACHINE PARTY</h1>
         <div class="subtitle">ALPHABET SURVIVAL EDITION</div>
-        
-        <!-- BỘ KHUNG CĂN CHỈNH TÊN VÀ NÚT TỶ LỆ VÀNG -->
-        <div class="menu-box">
+        <div class="form-group input-center-wrapper">
             <input type="text" id="myPlayerName" placeholder="TÊN (VD: safierro)..." maxlength="12">
-            <div class="menu-buttons">
-                <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
-                <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
-            </div>
+        </div>
+        <div class="button-group">
+            <button class="btn" id="navCreateRoom">TẠO PHÒNG</button>
+            <button class="btn" id="navJoinRoom">VÀO PHÒNG</button>
         </div>
     </div>
 
@@ -111,16 +109,16 @@
                 <span id="pushStatus">SÓNG ĐẨY: SẴN SÀNG</span>
             </div>
             <div class="right-buttons">
-                <!-- NÚT BẬT TẮT CHAT ĐỒNG NHẤT VỚI NÚT THOÁT -->
-                <button class="top-btn btn-chat" id="btnToggleChat">💬 CHAT</button>
-                <button class="top-btn btn-leave" id="btnLeave">THOÁT PHÒNG</button>
+                <!-- NÚT BẬT TẮT CHAT -->
+                <button class="btn btn-secondary" id="btnToggleChat" style="padding: 5px 10px; width: auto; margin: 0; font-size: 14px;">💬 CHAT</button>
+                <button class="btn btn-danger" id="btnLeave">THOÁT PHÒNG</button>
             </div>
         </div>
         
         <div id="targetBoard"></div>
         <div id="statusText">BẠN ĐÃ ƯỚT</div>
         
-        <!-- KHUNG CHAT IN-GAME -->
+        <!-- KHUNG CHAT IN-GAME (Thu nhỏ & Di chuyển sang Phải) -->
         <div id="inGameChatContainer" class="hidden">
             <div id="inGameChatMessages"></div>
             <input type="text" id="inGameChatInput" placeholder="Nhấn Enter để chat..." autocomplete="off">
